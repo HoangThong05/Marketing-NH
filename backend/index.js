@@ -48,7 +48,11 @@ app.use(
       // Cho phép request không có origin (Postman, curl, server-to-server)
       if (!origin) return callback(null, true);
       if (isAllowedOrigin(origin)) return callback(null, true);
-      return callback(new Error(`CORS: origin không được phép - ${origin}`));
+
+      // Origin lạ: không gắn header CORS thay vì ném lỗi.
+      // Trình duyệt vẫn chặn y hệt, nhưng server trả về phản hồi sạch
+      // thay vì 500 kèm stack trace làm bẩn log.
+      return callback(null, false);
     },
   })
 );
