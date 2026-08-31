@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { supabase } from '../supabase.js';
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
+import { taoRegexBoDau } from '../lib/tiengViet.js';
 import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
@@ -154,46 +155,217 @@ function validateCustomer(body = {}, partial = false) {
   return { errors, value };
 }
 
+/* ------------------------------------------------------------------ */
+/* Danh sách: phân trang, sắp xếp, lọc                                  */
+/* ------------------------------------------------------------------ */
+
+// Chỉ cho phép sắp xếp theo các cột này. Nhận thẳng tên cột từ query
+// mà không kiểm tra là mở đường cho người dùng dò cấu trúc bảng.
+const COT_SAP_XEP_HOP_LE = [
+  'created_at',
+  'ten_khach_hang',
+  'so_dien_thoai',
+  'phan_loai',
+  'trang_thai',
+  'hen_goi_lai',
+];
+
+const SO_DONG_MAC_DINH = 25;
+const SO_DONG_TOI_DA = 200;
+
+/**
+ * Dựng câu truy vấn kèm toàn bộ bộ lọc từ query string.
+ * Tách riêng để phần lấy danh sách và phần xuất Excel dùng chung một bộ lọc,
+ * tránh cảnh hai nơi lệch nhau rồi xuất ra dữ liệu khác với đang xem.
+ */
+function apDungBoLoc(query, q) {
+  const search = String(q.search || '').trim();
+  if (search) {
+    // Chuỗi chỉ gồm chữ số (bỏ qua khoảng trắng, dấu chấm, gạch ngang)
+    // thì chắc chắn người dùng đang tìm số điện thoại.
+    const chiSo = search.replace(/[\s.-]/g, '');
+
+    if (/^\d+$/.test(chiSo)) {
+      query = query.ilike('so_dien_thoai', `%${chiSo}%`);
+    } else {
+      // Tìm theo tên, bỏ qua dấu: gõ "hoang" vẫn ra "Hoàng".
+      // imatch là toán tử ~* của Postgres (khớp biểu thức chính quy,
+      // không phân biệt hoa thường).
+      const bieuThuc = taoRegexBoDau(search);
+      // supabase-js không có phương thức riêng cho toán tử regex,
+      // phải gọi filter() với toán tử PostgREST thô.
+      if (bieuThuc) query = query.filter('ten_khach_hang', 'imatch', bieuThuc);
+    }
+  }
+
+  const phanLoai = String(q.phan_loai || '').trim();
+  if (phanLoai && PHAN_LOAI_HOP_LE.includes(phanLoai)) {
+    query = query.eq('phan_loai', phanLoai);
+  }
+
+  const trangThai = String(q.trang_thai || '').trim();
+  if (trangThai && TRANG_THAI_HOP_LE.includes(trangThai)) {
+    query = query.eq('trang_thai', trangThai);
+  }
+
+  // Lọc theo khoảng ngày tạo. Ô "đến ngày" tính hết cả ngày hôm đó,
+  // nên cộng thêm một ngày rồi so sánh nhỏ hơn.
+  const tuNgay = String(q.tu_ngay || '').trim();
+  if (tuNgay) {
+    const d = new Date(tuNgay);
+    if (!Number.isNaN(d.getTime())) {
+      query = query.gte('created_at', d.toISOString());
+    }
+  }
+
+  const denNgay = String(q.den_ngay || '').trim();
+  if (denNgay) {
+    const d = new Date(denNgay);
+    if (!Number.isNaN(d.getTime())) {
+      d.setDate(d.getDate() + 1);
+      query = query.lt('created_at', d.toISOString());
+    }
+  }
+
+  // Chỉ lấy khách đã tới hạn hẹn gọi lại
+  if (String(q.den_han || '') === '1') {
+    query = query
+      .not('hen_goi_lai', 'is', null)
+      .lte('hen_goi_lai', new Date().toISOString());
+  }
+
+  return query;
+}
+
 /**
  * GET /api/customers  (cần đăng nhập)
- * Trả về toàn bộ danh sách khách hàng, mới nhất lên đầu.
- * Hỗ trợ tuỳ chọn ?search= và ?phan_loai= nếu muốn lọc phía server.
+ * Danh sách khách hàng có phân trang.
+ *
+ * Query: page, limit, sort, order, search, phan_loai, trang_thai,
+ *        tu_ngay, den_ngay, den_han
  */
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || SO_DONG_MAC_DINH, 1),
+      SO_DONG_TOI_DA
+    );
+
+    const sort = COT_SAP_XEP_HOP_LE.includes(String(req.query.sort))
+      ? String(req.query.sort)
+      : 'created_at';
+    const ascending = String(req.query.order || 'desc') === 'asc';
+
+    const tu = (page - 1) * limit;
+    const den = tu + limit - 1;
+
     let query = supabase
       .from('customers')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*', { count: 'exact' })
+      .order(sort, { ascending, nullsFirst: false })
+      // Chốt thêm thứ tự phụ theo id: hai bản ghi cùng giá trị sắp xếp mà
+      // không có tiêu chí phụ thì Postgres có thể trả thứ tự khác nhau giữa
+      // các trang, làm một bản ghi hiện hai lần hoặc biến mất khỏi danh sách.
+      .order('id', { ascending: false })
+      .range(tu, den);
 
-    const search = String(req.query.search || '').trim();
-    if (search) {
-      // Tìm theo tên HOẶC số điện thoại, không phân biệt hoa thường
-      query = query.or(
-        `ten_khach_hang.ilike.%${search}%,so_dien_thoai.ilike.%${search}%`
-      );
-    }
+    query = apDungBoLoc(query, req.query);
 
-    const phanLoai = String(req.query.phan_loai || '').trim();
-    if (phanLoai && PHAN_LOAI_HOP_LE.includes(phanLoai)) {
-      query = query.eq('phan_loai', phanLoai);
-    }
-
-    const trangThai = String(req.query.trang_thai || '').trim();
-    if (trangThai && TRANG_THAI_HOP_LE.includes(trangThai)) {
-      query = query.eq('trang_thai', trangThai);
-    }
-
-    const { data, error } = await query;
+    const { data, count, error } = await query;
     if (error) throw error;
 
-    return res.json({ success: true, data: data || [] });
+    const total = count || 0;
+    return res.json({
+      success: true,
+      data: data || [],
+      page,
+      limit,
+      total,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+    });
   } catch (err) {
     console.error('[customers/GET]', err);
     return res.status(500).json({
       success: false,
       message: 'Không thể tải danh sách khách hàng.',
     });
+  }
+});
+
+/**
+ * GET /api/customers/stats  (cần đăng nhập)
+ * Số liệu thống kê trên TOÀN BỘ dữ liệu, không phụ thuộc bộ lọc hay trang
+ * đang xem — thẻ thống kê và biểu đồ luôn nói về cả hệ thống.
+ */
+router.get('/stats', authMiddleware, async (_req, res) => {
+  try {
+    /** Đếm số dòng khớp một điều kiện. head:true nên không kéo dữ liệu về */
+    const dem = async (apDung) => {
+      let q = supabase.from('customers').select('id', { count: 'exact', head: true });
+      if (apDung) q = apDung(q);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count || 0;
+    };
+
+    const bayGio = new Date().toISOString();
+
+    // Chạy song song nên tổng độ trễ chỉ bằng một vòng gọi
+    const [total, denHan, ...soLieu] = await Promise.all([
+      dem(),
+      dem((q) => q.not('hen_goi_lai', 'is', null).lte('hen_goi_lai', bayGio)),
+      ...PHAN_LOAI_HOP_LE.map((v) => dem((q) => q.eq('phan_loai', v))),
+      ...TRANG_THAI_HOP_LE.map((v) => dem((q) => q.eq('trang_thai', v))),
+    ]);
+
+    const phan_loai = {};
+    PHAN_LOAI_HOP_LE.forEach((v, i) => {
+      phan_loai[v] = soLieu[i];
+    });
+
+    const trang_thai = {};
+    TRANG_THAI_HOP_LE.forEach((v, i) => {
+      trang_thai[v] = soLieu[PHAN_LOAI_HOP_LE.length + i];
+    });
+
+    return res.json({
+      success: true,
+      data: { total, den_han: denHan, phan_loai, trang_thai },
+    });
+  } catch (err) {
+    console.error('[customers/stats]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể tải số liệu thống kê.' });
+  }
+});
+
+/**
+ * GET /api/customers/export  (cần đăng nhập)
+ * Lấy toàn bộ dữ liệu khớp bộ lọc, KHÔNG phân trang, để xuất Excel.
+ * Có phân trang rồi thì không thể xuất từ dữ liệu đang hiển thị nữa,
+ * vì trình duyệt chỉ giữ đúng một trang.
+ */
+router.get('/export', authMiddleware, async (req, res) => {
+  try {
+    let query = supabase
+      .from('customers')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10000);
+
+    query = apDungBoLoc(query, req.query);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return res.json({ success: true, data: data || [] });
+  } catch (err) {
+    console.error('[customers/export]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể lấy dữ liệu để xuất.' });
   }
 });
 

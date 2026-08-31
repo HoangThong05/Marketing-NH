@@ -127,7 +127,10 @@ export const authAPI = {
 };
 
 export const customerAPI = {
-  getAll: () => api.get('/customers'),
+  getAll: (params) => api.get('/customers', { params }),
+  getStats: () => api.get('/customers/stats'),
+  // Lấy toàn bộ dữ liệu khớp bộ lọc (không phân trang) để xuất Excel
+  exportAll: (params) => api.get('/customers/export', { params }),
   // Lịch sử liên hệ của một khách hàng
   getContacts: (id) => api.get(`/customers/${id}/contacts`),
   addContact: (id, payload) => api.post(`/customers/${id}/contacts`, payload),

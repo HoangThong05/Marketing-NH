@@ -107,6 +107,120 @@ function StatCard({ label, value, accent, loading }) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Tiêu đề cột bấm được để sắp xếp                                     */
+/* ------------------------------------------------------------------ */
+
+function ThSort({ cot, sort, order, onSort, children }) {
+  const dangSort = sort === cot;
+
+  return (
+    <th className="px-4 py-3 font-semibold">
+      <button
+        type="button"
+        onClick={() => onSort(cot)}
+        aria-sort={dangSort ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}
+        className={`inline-flex items-center gap-1 uppercase tracking-wide transition hover:text-slate-800 ${
+          dangSort ? 'text-slate-800' : ''
+        }`}
+      >
+        {children}
+        {/* Mũi tên chỉ hiện ở cột đang sắp xếp, cột khác để mờ gợi ý bấm được */}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+          className={dangSort ? 'opacity-100' : 'opacity-25'}
+        >
+          {dangSort && order === 'asc' ? (
+            <path d="m6 15 6-6 6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          ) : (
+            <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+        </svg>
+      </button>
+    </th>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Thanh phân trang                                                    */
+/* ------------------------------------------------------------------ */
+
+function PhanTrang({ page, totalPages, total, limit, onPage, onLimit }) {
+  if (total === 0) return null;
+
+  const tu = (page - 1) * limit + 1;
+  const den = Math.min(page * limit, total);
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div className="flex items-center gap-3 text-sm text-slate-500">
+        <span className="tabular-nums">
+          {tu}&ndash;{den} trên {total}
+        </span>
+
+        <select
+          value={limit}
+          onChange={(e) => onLimit(Number(e.target.value))}
+          aria-label="Số dòng mỗi trang"
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm outline-none focus:border-ocb-green"
+        >
+          {[10, 25, 50, 100].map((n) => (
+            <option key={n} value={n}>
+              {n} dòng
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onPage(1)}
+          disabled={page <= 1}
+          className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Trang đầu"
+        >
+          &laquo;
+        </button>
+        <button
+          type="button"
+          onClick={() => onPage(page - 1)}
+          disabled={page <= 1}
+          className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Trước
+        </button>
+
+        <span className="px-2 text-sm tabular-nums text-slate-600">
+          Trang <span className="font-semibold">{page}</span> / {totalPages}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => onPage(page + 1)}
+          disabled={page >= totalPages}
+          className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Sau
+        </button>
+        <button
+          type="button"
+          onClick={() => onPage(totalPages)}
+          disabled={page >= totalPages}
+          className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Trang cuối"
+        >
+          &raquo;
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Tooltip tuỳ chỉnh cho biểu đồ                                       */
 /* ------------------------------------------------------------------ */
 
@@ -154,6 +268,21 @@ export default function Admin() {
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
   const [view, setView] = useState('khach'); // khach | taikhoan | nhatky
 
+  // Phân trang, sắp xếp, lọc theo ngày — tất cả xử lý phía server
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sort, setSort] = useState('created_at');
+  const [order, setOrder] = useState('desc');
+  const [tuNgay, setTuNgay] = useState('');
+  const [denNgay, setDenNgay] = useState('');
+  const [stats, setStats] = useState(null);
+
+  // Từ khoá đã trễ nhịp. Gõ tới đâu gọi API tới đó thì mỗi ký tự là một
+  // request; đợi 350ms sau khi ngừng gõ vẫn cho cảm giác tức thì.
+  const [searchDebounced, setSearchDebounced] = useState('');
+
   const quanTri = isAdmin(); // tài khoản hiện tại có quyền quản trị không
 
   /**
@@ -168,23 +297,71 @@ export default function Admin() {
     return () => clearInterval(id);
   }, []);
 
+  // Trễ nhịp ô tìm kiếm
+  useEffect(() => {
+    const id = setTimeout(() => setSearchDebounced(search.trim()), 350);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  // Đổi bộ lọc thì phải quay về trang 1, nếu không đang ở trang 5 mà lọc
+  // còn 2 trang sẽ ra danh sách trống mà không hiểu vì sao.
+  useEffect(() => {
+    setPage(1);
+  }, [searchDebounced, filterLoai, filterTrangThai, chiHienDenHan, tuNgay, denNgay, limit]);
+
   /**
    * Tải danh sách khách hàng từ backend.
    * @param {boolean} silent - true thì không hiện spinner toàn trang,
    *   dùng cho lần tải lại ngầm khi người dùng quay lại tab.
    */
-  const fetchCustomers = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const { data } = await customerAPI.getAll();
-      setCustomers(data.data || []);
-    } catch (error) {
-      // Lỗi 401 đã được interceptor xử lý (tự đăng xuất), ở đây chỉ báo lỗi khác
-      if (error?.response?.status !== 401) {
-        toast.error(getErrorMessage(error, 'Không thể tải danh sách khách hàng.'));
+  /** Gói tham số lọc hiện tại, dùng chung cho danh sách và xuất Excel */
+  const thamSoLoc = useMemo(
+    () => ({
+      search: searchDebounced || undefined,
+      phan_loai: filterLoai || undefined,
+      trang_thai: filterTrangThai || undefined,
+      tu_ngay: tuNgay || undefined,
+      den_ngay: denNgay || undefined,
+      den_han: chiHienDenHan ? 1 : undefined,
+    }),
+    [searchDebounced, filterLoai, filterTrangThai, tuNgay, denNgay, chiHienDenHan]
+  );
+
+  const fetchCustomers = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const { data } = await customerAPI.getAll({
+          ...thamSoLoc,
+          page,
+          limit,
+          sort,
+          order,
+        });
+        setCustomers(data.data || []);
+        setTotal(data.total ?? 0);
+        setTotalPages(data.totalPages ?? 1);
+      } catch (error) {
+        // Lỗi 401 đã được interceptor xử lý (tự đăng xuất), ở đây chỉ báo lỗi khác
+        if (error?.response?.status !== 401) {
+          toast.error(getErrorMessage(error, 'Không thể tải danh sách khách hàng.'));
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
+    },
+    [thamSoLoc, page, limit, sort, order]
+  );
+
+  /** Số liệu thống kê tính trên toàn bộ hệ thống, không theo bộ lọc */
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data } = await customerAPI.getStats();
+      setStats(data.data);
+    } catch (error) {
+      if (error?.response?.status !== 401) {
+        console.error('Không tải được thống kê:', error);
+      }
     }
   }, []);
 
@@ -192,14 +369,21 @@ export default function Admin() {
     fetchCustomers();
   }, [fetchCustomers]);
 
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
   // Quay lại tab thì tải lại ngầm ngay, để thấy thay đổi của người khác.
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchCustomers(true);
+      if (document.visibilityState === 'visible') {
+        fetchCustomers(true);
+        fetchStats();
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [fetchCustomers]);
+  }, [fetchCustomers, fetchStats]);
 
   // Tự động lấy dữ liệu mới mỗi 60 giây, để khách vừa đăng ký qua form
   // công khai xuất hiện mà không phải bấm Tải lại.
@@ -207,61 +391,59 @@ export default function Admin() {
   // gọi API lúc đó chỉ tốn hạn mức.
   useEffect(() => {
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible') fetchCustomers(true);
+      if (document.visibilityState === 'visible') {
+        fetchCustomers(true);
+        fetchStats();
+      }
     }, 60000);
     return () => clearInterval(id);
-  }, [fetchCustomers]);
+  }, [fetchCustomers, fetchStats]);
 
-  /* --- Thống kê: đếm theo từng phân loại --- */
-  const stats = useMemo(() => {
-    const result = { total: customers.length };
-    PHAN_LOAI_LIST.forEach((loai) => {
-      result[loai] = customers.filter((c) => c.phan_loai === loai).length;
-    });
-    return result;
-  }, [customers]);
-
-  /* --- Khách đã đến hoặc quá hạn hẹn gọi lại --- */
-  const denHan = useMemo(() => {
-    const bayGio = now;
-    return customers.filter(
-      (c) => c.hen_goi_lai && new Date(c.hen_goi_lai).getTime() <= bayGio
-    );
-  }, [customers, now]);
+  /* --- Thống kê lấy từ server, tính trên toàn bộ hệ thống --- */
+  const soDenHan = stats?.den_han ?? 0;
 
   /* --- Dữ liệu cho biểu đồ, luôn đủ 3 cột theo thứ tự cố định --- */
   const chartData = useMemo(
-    () => PHAN_LOAI_LIST.map((loai) => ({ name: loai, value: stats[loai] || 0 })),
+    () =>
+      PHAN_LOAI_LIST.map((loai) => ({
+        name: loai,
+        value: stats?.phan_loai?.[loai] ?? 0,
+      })),
     [stats]
   );
 
-  /* --- Lọc + tìm kiếm realtime ngay trên dữ liệu đã tải --- */
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+  // Server đã lọc và phân trang sẵn, ở đây chỉ hiển thị đúng những gì nhận về
+  const filtered = customers;
 
-    const bayGio = now;
+  /** Có đang áp bộ lọc nào không */
+  const coBoLoc = Boolean(
+    search || filterLoai || filterTrangThai || tuNgay || denNgay || chiHienDenHan
+  );
 
-    return customers.filter((c) => {
-      const khopLoai = !filterLoai || c.phan_loai === filterLoai;
-      if (!khopLoai) return false;
+  /** Xoá sạch mọi bộ lọc */
+  const xoaBoLoc = () => {
+    setSearch('');
+    setFilterLoai('');
+    setFilterTrangThai('');
+    setTuNgay('');
+    setDenNgay('');
+    setChiHienDenHan(false);
+  };
 
-      const khopTrangThai = !filterTrangThai || c.trang_thai === filterTrangThai;
-      if (!khopTrangThai) return false;
-
-      if (chiHienDenHan) {
-        const denHanRoi =
-          c.hen_goi_lai && new Date(c.hen_goi_lai).getTime() <= bayGio;
-        if (!denHanRoi) return false;
-      }
-
-      if (!keyword) return true;
-
-      // Tìm theo tên hoặc số điện thoại
-      const ten = (c.ten_khach_hang || '').toLowerCase();
-      const sdt = (c.so_dien_thoai || '').toLowerCase();
-      return ten.includes(keyword) || sdt.includes(keyword);
-    });
-  }, [customers, search, filterLoai, filterTrangThai, chiHienDenHan, now]);
+  /**
+   * Bấm vào tiêu đề cột để sắp xếp.
+   * Bấm lại cùng một cột thì đảo chiều tăng/giảm.
+   */
+  const doiSapXep = (cot) => {
+    if (sort === cot) {
+      setOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSort(cot);
+      // Ngày tháng thì mặc định mới nhất trước, chữ và số thì từ nhỏ đến lớn
+      setOrder(cot === 'created_at' || cot === 'hen_goi_lai' ? 'desc' : 'asc');
+    }
+    setPage(1);
+  };
 
   /* --- Xoá khách hàng --- */
   const handleDelete = async (customer) => {
@@ -290,13 +472,27 @@ export default function Admin() {
   };
 
   /* --- Xuất file Excel theo đúng danh sách đang hiển thị --- */
-  const handleExportExcel = () => {
-    if (!filtered.length) {
+  const [dangXuat, setDangXuat] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (total === 0) {
       toast.error('Không có dữ liệu để xuất.');
       return;
     }
 
-    const rows = filtered.map((c, index) => ({
+    setDangXuat(true);
+    try {
+      // Có phân trang rồi thì trình duyệt chỉ giữ đúng một trang.
+      // Phải hỏi lại server toàn bộ dữ liệu khớp bộ lọc hiện tại.
+      const { data: res } = await customerAPI.exportAll(thamSoLoc);
+      const danhSach = res.data || [];
+
+      if (!danhSach.length) {
+        toast.error('Không có dữ liệu để xuất.');
+        return;
+      }
+
+      const rows = danhSach.map((c, index) => ({
       STT: index + 1,
       'Số điện thoại': c.so_dien_thoai || '',
       'Tên khách hàng': c.ten_khach_hang || '',
@@ -308,7 +504,7 @@ export default function Admin() {
       'Ngày tạo': formatDate(c.created_at),
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+      const worksheet = XLSX.utils.json_to_sheet(rows);
     // Đặt độ rộng cột cho dễ đọc
     worksheet['!cols'] = [
       { wch: 5 },
@@ -322,13 +518,18 @@ export default function Admin() {
       { wch: 12 },
     ];
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Khách hàng');
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Khách hàng');
 
-    const ngay = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `Danh-sach-khach-hang-OCB-${ngay}.xlsx`);
+      const ngay = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `Danh-sach-khach-hang-OCB-${ngay}.xlsx`);
 
-    toast.success(`Đã xuất ${rows.length} khách hàng ra Excel.`);
+      toast.success(`Đã xuất ${rows.length} khách hàng ra Excel.`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không xuất được dữ liệu.'));
+    } finally {
+      setDangXuat(false);
+    }
   };
 
   /* --- Đăng xuất --- */
@@ -487,7 +688,15 @@ export default function Admin() {
             <span className="hidden sm:inline">Tải lại</span>
           </button>
 
-          <button type="button" onClick={handleExportExcel} className="btn-orange !px-3 !py-2">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={dangXuat}
+            className="btn-orange !px-3 !py-2"
+          >
+            {dangXuat ? (
+              <Spinner size="sm" className="text-white" />
+            ) : (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
                 d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
@@ -497,6 +706,7 @@ export default function Admin() {
                 strokeLinejoin="round"
               />
             </svg>
+            )}
             <span className="hidden sm:inline">Xuất Excel</span>
           </button>
             </>
@@ -509,7 +719,7 @@ export default function Admin() {
         {view === 'khach' && (
         <main className="space-y-6 p-4 sm:p-6">
           {/* ---------- Nhắc lịch gọi lại ---------- */}
-          {denHan.length > 0 && (
+          {soDenHan > 0 && (
             <section className="flex flex-col gap-3 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
                 <svg
@@ -530,7 +740,7 @@ export default function Admin() {
                   />
                 </svg>
                 <p className="text-sm text-amber-900">
-                  <span className="font-semibold">{denHan.length} khách</span> đã đến
+                  <span className="font-semibold">{soDenHan} khách</span> đã đến
                   hoặc quá hạn hẹn gọi lại.
                 </p>
               </div>
@@ -560,19 +770,29 @@ export default function Admin() {
 
           {/* ---------- 4 thẻ thống kê ---------- */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard label="Tổng khách hàng" value={stats.total} accent="#334155" loading={loading} />
-            <StatCard label="VIP" value={stats.VIP} accent={PHAN_LOAI_MAU.VIP} loading={loading} />
+            <StatCard
+              label="Tổng khách hàng"
+              value={stats?.total ?? 0}
+              accent="#334155"
+              loading={!stats}
+            />
+            <StatCard
+              label="VIP"
+              value={stats?.phan_loai?.VIP ?? 0}
+              accent={PHAN_LOAI_MAU.VIP}
+              loading={!stats}
+            />
             <StatCard
               label="Tiềm năng"
-              value={stats['Tiềm năng']}
+              value={stats?.phan_loai?.['Tiềm năng'] ?? 0}
               accent={PHAN_LOAI_MAU['Tiềm năng']}
-              loading={loading}
+              loading={!stats}
             />
             <StatCard
               label="Thường"
-              value={stats['Thường']}
+              value={stats?.phan_loai?.['Thường'] ?? 0}
               accent={PHAN_LOAI_MAU['Thường']}
-              loading={loading}
+              loading={!stats}
             />
           </section>
 
@@ -582,7 +802,7 @@ export default function Admin() {
               Số lượng khách hàng theo phân loại
             </h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              Tính trên toàn bộ {stats.total} khách hàng trong hệ thống
+              Tính trên toàn bộ {stats?.total ?? 0} khách hàng trong hệ thống
             </p>
 
             <div className="mt-5 h-64 w-full sm:h-72">
@@ -627,8 +847,8 @@ export default function Admin() {
             className="scroll-mt-20 rounded-xl bg-white shadow-sm ring-1 ring-slate-200"
           >
             {/* Hàng công cụ tìm kiếm / lọc */}
-            <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:p-5">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
+              <div className="relative min-w-[220px] flex-1">
                 <svg
                   width="16"
                   height="16"
@@ -678,8 +898,38 @@ export default function Admin() {
                 ))}
               </select>
 
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={tuNgay}
+                  onChange={(e) => setTuNgay(e.target.value)}
+                  aria-label="Từ ngày"
+                  title="Ngày tạo từ"
+                  className="input-field sm:w-40"
+                />
+                <span className="text-sm text-slate-400">&rarr;</span>
+                <input
+                  type="date"
+                  value={denNgay}
+                  onChange={(e) => setDenNgay(e.target.value)}
+                  aria-label="Đến ngày"
+                  title="Ngày tạo đến"
+                  className="input-field sm:w-40"
+                />
+              </div>
+
+              {coBoLoc && (
+                <button
+                  type="button"
+                  onClick={xoaBoLoc}
+                  className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  Xoá bộ lọc
+                </button>
+              )}
+
               <span className="whitespace-nowrap text-sm text-slate-500">
-                {filtered.length} / {customers.length} khách hàng
+                {total} khách hàng
               </span>
             </div>
 
@@ -689,19 +939,14 @@ export default function Admin() {
             ) : filtered.length === 0 ? (
               <div className="py-16 text-center">
                 <p className="text-sm font-medium text-slate-600">
-                  {customers.length === 0
-                    ? 'Chưa có khách hàng nào trong hệ thống.'
-                    : 'Không tìm thấy khách hàng phù hợp.'}
+                  {coBoLoc
+                    ? 'Không tìm thấy khách hàng phù hợp.'
+                    : 'Chưa có khách hàng nào trong hệ thống.'}
                 </p>
-                {customers.length > 0 && (
+                {coBoLoc && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setSearch('');
-                      setFilterLoai('');
-                      setFilterTrangThai('');
-                      setChiHienDenHan(false);
-                    }}
+                    onClick={xoaBoLoc}
                     className="mt-3 text-sm font-medium text-ocb-green hover:underline"
                   >
                     Xoá bộ lọc
@@ -714,20 +959,32 @@ export default function Admin() {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-4 py-3 font-semibold">#</th>
-                      <th className="px-4 py-3 font-semibold">Số điện thoại</th>
-                      <th className="px-4 py-3 font-semibold">Tên khách hàng</th>
+                      <ThSort cot="so_dien_thoai" sort={sort} order={order} onSort={doiSapXep}>
+                        Số điện thoại
+                      </ThSort>
+                      <ThSort cot="ten_khach_hang" sort={sort} order={order} onSort={doiSapXep}>
+                        Tên khách hàng
+                      </ThSort>
                       <th className="px-4 py-3 font-semibold">Địa chỉ</th>
-                      <th className="px-4 py-3 font-semibold">Phân loại</th>
-                      <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                      <ThSort cot="phan_loai" sort={sort} order={order} onSort={doiSapXep}>
+                        Phân loại
+                      </ThSort>
+                      <ThSort cot="trang_thai" sort={sort} order={order} onSort={doiSapXep}>
+                        Trạng thái
+                      </ThSort>
                       <th className="px-4 py-3 font-semibold">Ghi chú</th>
-                      <th className="px-4 py-3 font-semibold">Ngày tạo</th>
+                      <ThSort cot="created_at" sort={sort} order={order} onSort={doiSapXep}>
+                        Ngày tạo
+                      </ThSort>
                       <th className="px-4 py-3 text-right font-semibold">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filtered.map((c, index) => (
                       <tr key={c.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-3 tabular-nums text-slate-400">{index + 1}</td>
+                        <td className="px-4 py-3 tabular-nums text-slate-400">
+                          {(page - 1) * limit + index + 1}
+                        </td>
                         <td className="px-4 py-3 font-medium tabular-nums text-slate-800">
                           {c.so_dien_thoai}
                         </td>
@@ -804,6 +1061,15 @@ export default function Admin() {
                 </table>
               </div>
             )}
+
+            <PhanTrang
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              limit={limit}
+              onPage={setPage}
+              onLimit={setLimit}
+            />
           </section>
         </main>
         )}
