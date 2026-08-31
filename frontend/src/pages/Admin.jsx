@@ -1320,9 +1320,10 @@ export default function Admin() {
                               <button
                                 type="button"
                                 onClick={() => doiPhuTrach(c, null)}
-                                className="ml-2 text-xs font-medium text-slate-400 underline decoration-dotted underline-offset-2 hover:text-red-600"
+                                className="ml-2 text-xs font-medium text-slate-500 underline decoration-dotted underline-offset-2 hover:text-ocb-orange-dark"
+                                title="Trả khách về nhóm chưa giao, không xoá dữ liệu"
                               >
-                                bỏ
+                                Trả lại
                               </button>
                             </span>
                           ) : c.phu_trach_id ? (
@@ -1334,9 +1335,10 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={() => doiPhuTrach(c, user?.id)}
-                              className="rounded-lg bg-ocb-orange-light px-2.5 py-1 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange hover:text-white"
+                              className="whitespace-nowrap rounded-lg bg-ocb-orange-light px-2.5 py-1 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange hover:text-white"
+                              title="Nhận phụ trách khách hàng này"
                             >
-                              Nhận
+                              Nhận khách
                             </button>
                           )}
                         </td>
