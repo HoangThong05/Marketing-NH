@@ -131,6 +131,7 @@ export const customerAPI = {
   getStats: () => api.get('/customers/stats'),
   // Lấy toàn bộ dữ liệu khớp bộ lọc (không phân trang) để xuất Excel
   exportAll: (params) => api.get('/customers/export', { params }),
+  importRows: (payload) => api.post('/customers/import', payload),
   // Lịch sử liên hệ của một khách hàng
   getContacts: (id) => api.get(`/customers/${id}/contacts`),
   addContact: (id, payload) => api.post(`/customers/${id}/contacts`, payload),

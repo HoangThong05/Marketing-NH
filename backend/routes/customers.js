@@ -545,6 +545,151 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
 });
 
 /* ------------------------------------------------------------------ */
+/* Nhập danh sách từ file                                               */
+/* ------------------------------------------------------------------ */
+
+// Số dòng tối đa xử lý trong một lần gọi. File lớn được phía giao diện
+// cắt thành nhiều lô, vừa tránh serverless hết thời gian chạy, vừa cho
+// người dùng thấy tiến độ thay vì ngồi đợi một cục.
+const SO_DONG_MOI_LO = 500;
+
+/**
+ * POST /api/customers/import  (chỉ admin)
+ *
+ * Body: { rows: [...], che_do: 'bo_qua' | 'cap_nhat' }
+ *   bo_qua   - số điện thoại đã tồn tại thì bỏ qua, giữ nguyên dữ liệu cũ
+ *   cap_nhat - ghi đè thông tin cũ bằng dữ liệu trong file
+ *
+ * Trả về kết quả từng dòng để người dùng biết dòng nào lỗi ở đâu.
+ */
+router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+    const cheDo = req.body?.che_do === 'cap_nhat' ? 'cap_nhat' : 'bo_qua';
+
+    if (!rows || rows.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Không có dòng dữ liệu nào.' });
+    }
+    if (rows.length > SO_DONG_MOI_LO) {
+      return res.status(400).json({
+        success: false,
+        message: `Mỗi lần chỉ nhập tối đa ${SO_DONG_MOI_LO} dòng.`,
+      });
+    }
+
+    const loi = [];
+    const hopLe = [];
+    // Số điện thoại đã gặp trong CHÍNH lô này, để bắt trùng nội bộ file.
+    // Không có bước này thì hai dòng trùng nhau trong cùng file sẽ làm
+    // cả lệnh insert đổ vì vi phạm ràng buộc UNIQUE.
+    const daGap = new Set();
+
+    rows.forEach((row, i) => {
+      // dong: số dòng trong file Excel để người dùng còn biết chỗ mà sửa
+      const dong = Number(row?.__dong) || i + 1;
+
+      const { errors, value } = validateCustomer(row, false);
+      if (errors.length) {
+        loi.push({ dong, so_dien_thoai: row?.so_dien_thoai || '', ly_do: errors[0] });
+        return;
+      }
+
+      if (daGap.has(value.so_dien_thoai)) {
+        loi.push({
+          dong,
+          so_dien_thoai: value.so_dien_thoai,
+          ly_do: 'Trùng số điện thoại với dòng khác trong cùng file.',
+        });
+        return;
+      }
+      daGap.add(value.so_dien_thoai);
+
+      if (!value.phan_loai) value.phan_loai = 'Thường';
+      // Khách nhập từ file cũng bắt đầu ở trạng thái "Mới" như khách tự đăng ký
+      if (!value.trang_thai) value.trang_thai = 'Mới';
+
+      hopLe.push({ dong, value });
+    });
+
+    if (hopLe.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Không có dòng nào hợp lệ để nhập.',
+        ket_qua: { them_moi: 0, cap_nhat: 0, bo_qua: 0, loi },
+      });
+    }
+
+    // Tra một lượt xem số nào đã có trong hệ thống
+    const dsSo = hopLe.map((h) => h.value.so_dien_thoai);
+    const { data: daCo, error: traError } = await supabase
+      .from('customers')
+      .select('id, so_dien_thoai')
+      .in('so_dien_thoai', dsSo);
+
+    if (traError) throw traError;
+
+    const banDoCu = new Map((daCo || []).map((c) => [c.so_dien_thoai, c.id]));
+
+    const themMoi = [];
+    const capNhat = [];
+    let boQua = 0;
+
+    hopLe.forEach(({ value }) => {
+      const idCu = banDoCu.get(value.so_dien_thoai);
+      if (!idCu) {
+        themMoi.push(value);
+      } else if (cheDo === 'cap_nhat') {
+        capNhat.push({ id: idCu, value });
+      } else {
+        boQua += 1;
+      }
+    });
+
+    if (themMoi.length) {
+      const { error } = await supabase.from('customers').insert(themMoi);
+      if (error) throw error;
+    }
+
+    // Cập nhật từng dòng một. Supabase không có lệnh cập nhật hàng loạt theo
+    // id khác nhau, và số dòng trùng thường ít nên chấp nhận được.
+    for (const { id, value } of capNhat) {
+      // Không đụng tới trạng thái chăm sóc của khách đã có: nhập lại file
+      // mà xoá mất tiến trình chăm sóc thì tai hại hơn nhiều so với lợi ích.
+      const { trang_thai, ...phanConLai } = value;
+      const { error } = await supabase
+        .from('customers')
+        .update(phanConLai)
+        .eq('id', id);
+      if (error) throw error;
+    }
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'tao',
+      doi_tuong: 'khach_hang',
+      mo_ta: `Nhập từ file: thêm ${themMoi.length}, cập nhật ${capNhat.length}, bỏ qua ${boQua}, lỗi ${loi.length}`,
+    });
+
+    return res.json({
+      success: true,
+      message: 'Đã nhập xong.',
+      ket_qua: {
+        them_moi: themMoi.length,
+        cap_nhat: capNhat.length,
+        bo_qua: boQua,
+        loi,
+      },
+    });
+  } catch (err) {
+    console.error('[customers/import]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể nhập dữ liệu.' });
+  }
+});
+
+/* ------------------------------------------------------------------ */
 /* Lịch sử liên hệ                                                      */
 /* ------------------------------------------------------------------ */
 

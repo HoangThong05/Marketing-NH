@@ -24,6 +24,7 @@ import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import ContactModal from '../components/ContactModal';
+import ImportModal from '../components/ImportModal';
 import {
   PHAN_LOAI_LIST,
   PHAN_LOAI_MAU,
@@ -473,6 +474,7 @@ export default function Admin() {
 
   /* --- Xuất file Excel theo đúng danh sách đang hiển thị --- */
   const [dangXuat, setDangXuat] = useState(false);
+  const [dangNhapFile, setDangNhapFile] = useState(false); // modal nhập Excel
 
   const handleExportExcel = async () => {
     if (total === 0) {
@@ -687,6 +689,27 @@ export default function Admin() {
             )}
             <span className="hidden sm:inline">Tải lại</span>
           </button>
+
+          {/* Nhập hàng loạt là thao tác ghi đè diện rộng, chỉ admin được dùng */}
+          {quanTri && (
+            <button
+              type="button"
+              onClick={() => setDangNhapFile(true)}
+              className="btn-ghost !px-3 !py-2"
+              title="Nhập khách hàng từ file Excel"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 15V3m0 0L8 7m4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="hidden sm:inline">Nhập Excel</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -1080,6 +1103,16 @@ export default function Admin() {
         customer={editing}
         onClose={() => setEditing(null)}
         onSaved={handleSaved}
+      />
+
+      {/* ============ Modal nhập từ Excel ============ */}
+      <ImportModal
+        open={dangNhapFile}
+        onClose={() => setDangNhapFile(false)}
+        onDone={() => {
+          fetchCustomers();
+          fetchStats();
+        }}
       />
 
       {/* ============ Modal chăm sóc khách hàng ============ */}
