@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 
 import { customerAPI, getErrorMessage } from '../services/api';
 import { PHAN_LOAI_LIST } from '../constants';
+import { chuanHoaSoDienThoai } from '../utils/dienThoai';
 import Spinner from './Spinner';
 
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
@@ -133,13 +134,15 @@ export default function ImportModal({ open, onClose, onDone }) {
         // +2 vì dòng 1 là tiêu đề và Excel đếm từ 1
         const dong = i + 2;
 
-        const sdt = String(r[banDo.so_dien_thoai] ?? '').replace(/[\s.-]/g, '');
+        const sdtGoc = r[banDo.so_dien_thoai];
+        const sdt = chuanHoaSoDienThoai(sdtGoc);
         const ten = String(r[banDo.ten_khach_hang] ?? '').trim();
         const loai = banDo.phan_loai ? String(r[banDo.phan_loai] ?? '').trim() : '';
 
         let loi = null;
         if (!sdt) loi = 'Thiếu số điện thoại';
-        else if (!PHONE_REGEX.test(sdt)) loi = 'Số điện thoại không hợp lệ';
+        else if (!PHONE_REGEX.test(sdt))
+          loi = `Số điện thoại không hợp lệ (đọc được: "${sdt}")`;
         else if (!ten) loi = 'Thiếu tên khách hàng';
         else if (ten.length < 2) loi = 'Tên quá ngắn';
         else if (loai && !PHAN_LOAI_LIST.includes(loai))

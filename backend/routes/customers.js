@@ -6,6 +6,7 @@ import { supabase } from '../supabase.js';
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
 import { taoRegexBoDau } from '../lib/tiengViet.js';
+import { chuanHoaSoDienThoai } from '../lib/dienThoai.js';
 import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
@@ -99,12 +100,13 @@ function validateCustomer(body = {}, partial = false) {
 
   // --- Số điện thoại ---
   if (body.so_dien_thoai !== undefined || !partial) {
-    // Bỏ khoảng trắng, dấu chấm và gạch ngang người dùng hay gõ thêm
-    const phone = String(body.so_dien_thoai || '').replace(/[\s.-]/g, '');
+    const phone = chuanHoaSoDienThoai(body.so_dien_thoai);
     if (!phone) {
       errors.push('Vui lòng nhập số điện thoại.');
     } else if (!PHONE_REGEX.test(phone)) {
-      errors.push('Số điện thoại không hợp lệ.');
+      // Kèm giá trị đọc được, nếu không người dùng nhìn file thấy đúng
+      // mà hệ thống báo sai thì không hiểu vì sao
+      errors.push(`Số điện thoại không hợp lệ (đọc được: "${phone}").`);
     } else {
       value.so_dien_thoai = phone;
     }

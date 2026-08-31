@@ -507,6 +507,19 @@ export default function Admin() {
     }));
 
       const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      // Ép cột Số điện thoại về kiểu text và gắn định dạng '@'.
+      // Không có bước này, mở file trong Excel rồi lưu lại sẽ biến
+      // 0962547621 thành số 962547621 — mất số 0 đứng đầu, nhập lại không được.
+      const phamVi = XLSX.utils.decode_range(worksheet['!ref']);
+      for (let r = phamVi.s.r + 1; r <= phamVi.e.r; r += 1) {
+        const o = worksheet[XLSX.utils.encode_cell({ r, c: 1 })];
+        if (o) {
+          o.t = 's';
+          o.z = '@';
+          o.v = String(o.v);
+        }
+      }
     // Đặt độ rộng cột cho dễ đọc
     worksheet['!cols'] = [
       { wch: 5 },

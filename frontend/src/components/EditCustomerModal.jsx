@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 import { customerAPI, getErrorMessage } from '../services/api';
 import Spinner from './Spinner';
+import { chuanHoaSoDienThoai } from '../utils/dienThoai';
 
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
 const PHAN_LOAI_OPTIONS = ['Thường', 'Tiềm năng', 'VIP'];
@@ -109,7 +110,7 @@ export default function EditCustomerModal({ customer, onClose, onSaved }) {
               className={`input-field ${errors.so_dien_thoai ? 'input-error' : ''}`}
               {...register('so_dien_thoai', {
                 required: 'Vui lòng nhập số điện thoại',
-                setValueAs: (v) => (v || '').replace(/[\s.-]/g, ''),
+                setValueAs: (v) => chuanHoaSoDienThoai(v),
                 pattern: {
                   value: PHONE_REGEX,
                   message: 'Số điện thoại không hợp lệ',

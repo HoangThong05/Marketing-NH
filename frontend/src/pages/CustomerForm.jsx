@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { customerAPI, getErrorMessage } from '../services/api';
 import OcbLogo from '../components/OcbLogo';
 import Spinner from '../components/Spinner';
+import { chuanHoaSoDienThoai } from '../utils/dienThoai';
 
 // Regex kiểm tra số điện thoại Việt Nam theo đầu số các nhà mạng
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
@@ -87,7 +88,7 @@ export default function CustomerForm() {
                 {...register('so_dien_thoai', {
                   required: 'Vui lòng nhập số điện thoại',
                   // Chuẩn hoá trước khi validate: gõ "090 123 4567" vẫn hợp lệ
-                  setValueAs: (v) => (v || '').replace(/[\s.-]/g, ''),
+                  setValueAs: (v) => chuanHoaSoDienThoai(v),
                   pattern: {
                     value: PHONE_REGEX,
                     message: 'Số điện thoại không hợp lệ (ví dụ: 0901234567)',
