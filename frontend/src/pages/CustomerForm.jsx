@@ -51,7 +51,7 @@ export default function CustomerForm() {
       <div className="mx-auto w-full max-w-xl">
         {/* Tiêu đề trang */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <OcbLogo size="lg" />
+          <OcbLogo size="xl" />
           <h1 className="mt-4 text-2xl font-bold text-slate-800 sm:text-3xl">
             Đăng ký thông tin khách hàng
           </h1>
