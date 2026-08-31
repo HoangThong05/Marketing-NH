@@ -1,7 +1,10 @@
 // Các giá trị dùng chung giữa nhiều route.
 
 // Phân loại khách hàng
-export const PHAN_LOAI_HOP_LE = ['Thường', 'Tiềm năng', 'VIP'];
+// Bỏ hạng VIP: hạng khách hàng ưu tiên của ngân hàng căn cứ số dư và
+// tài sản thực tế, không thuộc phạm vi một công cụ thu thập lead.
+// Ở đây phân loại chỉ nói lên mức tiềm năng của một lead marketing.
+export const PHAN_LOAI_HOP_LE = ['Thường', 'Tiềm năng'];
 
 // Trạng thái chăm sóc, xếp theo tiến trình tự nhiên của một khách hàng
 export const TRANG_THAI_HOP_LE = [
@@ -50,3 +53,13 @@ export const MUC_LUONG_HOP_LE = [
   '20 - 50 triệu',
   'Trên 50 triệu',
 ];
+
+// Các bậc thu nhập đủ để gợi ý nâng khách lên "Tiềm năng".
+//
+// Đây là ngưỡng của riêng phòng marketing để chấm mức tiềm năng của một
+// lead, KHÔNG phải tiêu chí phân hạng khách hàng ưu tiên của ngân hàng.
+// Sửa danh sách này là đổi được ngưỡng gợi ý.
+//
+// Cố ý không gợi ý lên VIP: hạng VIP phải căn cứ số dư và tài sản thực tế
+// tại ngân hàng, mà thu nhập ở đây do khách tự khai, không có gì đối chiếu.
+export const MUC_LUONG_GOI_Y_TIEM_NANG = ['20 - 50 triệu', 'Trên 50 triệu'];

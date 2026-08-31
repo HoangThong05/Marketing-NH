@@ -27,12 +27,14 @@ import ContactModal from '../components/ContactModal';
 import ImportModal from '../components/ImportModal';
 import {
   PHAN_LOAI_LIST,
-  PHAN_LOAI_MAU,
   PHAN_LOAI_BADGE,
   TRANG_THAI_LIST,
   TRANG_THAI_BADGE,
   MUC_LUONG_LIST,
   MUC_LUONG_BADGE,
+  MUC_LUONG_MAU,
+  TRANG_THAI_MAU,
+  nenNangHang,
 } from '../constants';
 
 // Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
@@ -227,7 +229,7 @@ function PhanTrang({ page, totalPages, total, limit, onPage, onLimit }) {
 /* Tooltip tuỳ chỉnh cho biểu đồ                                       */
 /* ------------------------------------------------------------------ */
 
-function ChartTooltip({ active, payload }) {
+function ChartTooltip({ active, payload, bangMau }) {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
 
@@ -236,7 +238,7 @@ function ChartTooltip({ active, payload }) {
       <div className="flex items-center gap-2">
         <span
           className="h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: PHAN_LOAI_MAU[item.name] }}
+          style={{ backgroundColor: bangMau?.[item.name] || '#94a3b8' }}
           aria-hidden="true"
         />
         <span className="text-sm font-medium text-slate-700">{item.name}</span>
@@ -268,6 +270,8 @@ export default function Admin() {
   const [contacting, setContacting] = useState(null); // khách đang chăm sóc
   const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
   const [filterMucLuong, setFilterMucLuong] = useState(''); // lọc mức thu nhập
+  const [chiHienGoiY, setChiHienGoiY] = useState(false); // chỉ khách nên nâng hạng
+  const [nangHangId, setNangHangId] = useState(null); // id đang nâng hạng
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
   const [view, setView] = useState('khach'); // khach | taikhoan | nhatky
@@ -317,6 +321,7 @@ export default function Admin() {
     filterTrangThai,
     filterMucLuong,
     chiHienDenHan,
+    chiHienGoiY,
     tuNgay,
     denNgay,
     limit,
@@ -337,6 +342,7 @@ export default function Admin() {
       tu_ngay: tuNgay || undefined,
       den_ngay: denNgay || undefined,
       den_han: chiHienDenHan ? 1 : undefined,
+      goi_y: chiHienGoiY ? 1 : undefined,
     }),
     [
       searchDebounced,
@@ -346,6 +352,7 @@ export default function Admin() {
       tuNgay,
       denNgay,
       chiHienDenHan,
+      chiHienGoiY,
     ]
   );
 
@@ -428,12 +435,22 @@ export default function Admin() {
   /* --- Thống kê lấy từ server, tính trên toàn bộ hệ thống --- */
   const soDenHan = stats?.den_han ?? 0;
 
-  /* --- Dữ liệu cho biểu đồ, luôn đủ 3 cột theo thứ tự cố định --- */
-  const chartData = useMemo(
+  /* --- Phễu chăm sóc: luôn đủ 5 bậc theo đúng thứ tự tiến trình --- */
+  const dulieuPheu = useMemo(
     () =>
-      PHAN_LOAI_LIST.map((loai) => ({
-        name: loai,
-        value: stats?.phan_loai?.[loai] ?? 0,
+      TRANG_THAI_LIST.map((t) => ({
+        name: t,
+        value: stats?.trang_thai?.[t] ?? 0,
+      })),
+    [stats]
+  );
+
+  /* --- Cơ cấu thu nhập: đủ 4 bậc từ thấp đến cao --- */
+  const dulieuThuNhap = useMemo(
+    () =>
+      MUC_LUONG_LIST.map((ml) => ({
+        name: ml,
+        value: stats?.muc_luong?.[ml] ?? 0,
       })),
     [stats]
   );
@@ -449,7 +466,8 @@ export default function Admin() {
       filterMucLuong ||
       tuNgay ||
       denNgay ||
-      chiHienDenHan
+      chiHienDenHan ||
+      chiHienGoiY
   );
 
   /** Xoá sạch mọi bộ lọc */
@@ -461,6 +479,7 @@ export default function Admin() {
     setTuNgay('');
     setDenNgay('');
     setChiHienDenHan(false);
+    setChiHienGoiY(false);
   };
 
   /**
@@ -476,6 +495,27 @@ export default function Admin() {
       setOrder(cot === 'created_at' || cot === 'hen_goi_lai' ? 'desc' : 'asc');
     }
     setPage(1);
+  };
+
+  /**
+   * Nâng một khách từ "Thường" lên "Tiềm năng" ngay tại bảng.
+   * Chỉ là lối tắt cho thao tác vốn phải mở modal Sửa — hệ thống không bao
+   * giờ tự đổi phân loại, luôn phải có người bấm.
+   */
+  const nangLenTiemNang = async (customer) => {
+    setNangHangId(customer.id);
+    try {
+      const { data } = await customerAPI.update(customer.id, {
+        phan_loai: 'Tiềm năng',
+      });
+      handleSaved(data.data);
+      fetchStats();
+      toast.success(`Đã nâng "${customer.ten_khach_hang}" lên Tiềm năng.`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không thể nâng hạng khách hàng.'));
+    } finally {
+      setNangHangId(null);
+    }
   };
 
   /* --- Xoá khách hàng --- */
@@ -852,67 +892,138 @@ export default function Admin() {
               loading={!stats}
             />
             <StatCard
-              label="VIP"
-              value={stats?.phan_loai?.VIP ?? 0}
-              accent={PHAN_LOAI_MAU.VIP}
+              label="Chưa ai gọi"
+              value={stats?.trang_thai?.['Mới'] ?? 0}
+              accent={TRANG_THAI_MAU['Mới']}
               loading={!stats}
             />
             <StatCard
-              label="Tiềm năng"
-              value={stats?.phan_loai?.['Tiềm năng'] ?? 0}
-              accent={PHAN_LOAI_MAU['Tiềm năng']}
+              label="Cần gọi lại"
+              value={soDenHan}
+              accent="#D97706"
               loading={!stats}
             />
             <StatCard
-              label="Thường"
-              value={stats?.phan_loai?.['Thường'] ?? 0}
-              accent={PHAN_LOAI_MAU['Thường']}
+              label="Đã chốt"
+              value={stats?.trang_thai?.['Chốt'] ?? 0}
+              accent={TRANG_THAI_MAU['Chốt']}
               loading={!stats}
             />
           </section>
 
-          {/* ---------- Biểu đồ phân loại ---------- */}
-          <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
-            <h2 className="text-sm font-semibold text-slate-800">
-              Số lượng khách hàng theo phân loại
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Tính trên toàn bộ {stats?.total ?? 0} khách hàng trong hệ thống
-            </p>
+          {/* ---------- Hai biểu đồ ---------- */}
+          <section className="grid gap-4 lg:grid-cols-2 sm:gap-6">
+            {/* --- Phễu chăm sóc --- */}
+            <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Phễu chăm sóc khách hàng
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Trên tổng số {stats?.total ?? 0} khách hàng trong hệ thống
+              </p>
 
-            <div className="mt-5 h-64 w-full sm:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 24, right: 8, left: -16, bottom: 0 }}>
-                  {/* Lưới ngang mờ, không vẽ lưới dọc để nền không bị rối */}
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 12, fill: '#64748b' }}
-                    tickLine={false}
-                    axisLine={{ stroke: '#e2e8f0' }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tick={{ fontSize: 12, fill: '#64748b' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f1f5f9' }} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={72}>
-                    {/* Mỗi cột lấy màu theo phân loại của chính nó */}
-                    {chartData.map((entry) => (
-                      <Cell key={entry.name} fill={PHAN_LOAI_MAU[entry.name]} />
-                    ))}
-                    {/* Nhãn số ngay trên đầu cột, đọc được không cần dò trục */}
-                    <LabelList
-                      dataKey="value"
-                      position="top"
-                      offset={8}
-                      style={{ fill: '#334155', fontSize: 12, fontWeight: 600 }}
+              {/* Nằm ngang vì tên trạng thái dài, để dọc sẽ bị cắt chữ */}
+              <div className="mt-5 h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={dulieuPheu}
+                    layout="vertical"
+                    margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      tickLine={false}
+                      axisLine={false}
                     />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={88}
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e2e8f0' }}
+                    />
+                    <Tooltip
+                      content={<ChartTooltip bangMau={TRANG_THAI_MAU} />}
+                      cursor={{ fill: '#f1f5f9' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={26}>
+                      {dulieuPheu.map((e) => (
+                        <Cell key={e.name} fill={TRANG_THAI_MAU[e.name]} />
+                      ))}
+                      <LabelList
+                        dataKey="value"
+                        position="right"
+                        offset={8}
+                        style={{ fill: '#334155', fontSize: 12, fontWeight: 600 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <p className="mt-3 text-xs text-slate-400">
+                Xanh dương: đang xử lý &middot; Xanh lá: đã chốt &middot; Đỏ: từ chối
+              </p>
+            </div>
+
+            {/* --- Cơ cấu thu nhập --- */}
+            <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-6">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Cơ cấu thu nhập khách hàng
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Theo mức thu nhập khách tự khai khi đăng ký
+              </p>
+
+              <div className="mt-5 h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={dulieuThuNhap}
+                    layout="vertical"
+                    margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      allowDecimals={false}
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={88}
+                      tick={{ fontSize: 12, fill: '#64748b' }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e2e8f0' }}
+                    />
+                    <Tooltip
+                      content={<ChartTooltip bangMau={MUC_LUONG_MAU} />}
+                      cursor={{ fill: '#f1f5f9' }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={26}>
+                      {dulieuThuNhap.map((e) => (
+                        <Cell key={e.name} fill={MUC_LUONG_MAU[e.name]} />
+                      ))}
+                      <LabelList
+                        dataKey="value"
+                        position="right"
+                        offset={8}
+                        style={{ fill: '#334155', fontSize: 12, fontWeight: 600 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <p className="mt-3 text-xs text-slate-400">
+                Màu đậm dần theo bậc thu nhập. Khách chưa khai không tính vào đây.
+              </p>
             </div>
           </section>
 
@@ -1006,6 +1117,19 @@ export default function Admin() {
                   className="input-field sm:w-40"
                 />
               </div>
+
+              <button
+                type="button"
+                onClick={() => setChiHienGoiY((v) => !v)}
+                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  chiHienGoiY
+                    ? 'bg-ocb-green text-white'
+                    : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
+                }`}
+                title="Khách đang xếp Thường nhưng thu nhập đủ để cân nhắc nâng hạng"
+              >
+                Có gợi ý nâng hạng
+              </button>
 
               {coBoLoc && (
                 <button
@@ -1102,7 +1226,7 @@ export default function Admin() {
                         <td className="max-w-[220px] truncate px-4 py-3 text-slate-600" title={c.dia_chi || ''}>
                           {c.dia_chi || '—'}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="whitespace-nowrap px-4 py-3">
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
                               PHAN_LOAI_BADGE[c.phan_loai] || 'bg-slate-100 text-slate-600 ring-slate-300'
@@ -1110,6 +1234,21 @@ export default function Admin() {
                           >
                             {c.phan_loai || 'Thường'}
                           </span>
+
+                          {/* Gợi ý nâng hạng: chỉ nhắc, bấm mới đổi */}
+                          {nenNangHang(c) && (
+                            <button
+                              type="button"
+                              onClick={() => nangLenTiemNang(c)}
+                              disabled={nangHangId === c.id}
+                              title={`Thu nhập ${c.muc_luong} — bấm để nâng lên Tiềm năng`}
+                              className="mt-1 block text-xs font-medium text-ocb-orange-dark underline decoration-dotted underline-offset-2 transition hover:text-ocb-orange disabled:opacity-50"
+                            >
+                              {nangHangId === c.id
+                                ? 'Đang nâng...'
+                                : '↑ Nên nâng lên Tiềm năng'}
+                            </button>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <span

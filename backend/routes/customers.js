@@ -11,6 +11,7 @@ import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
   MUC_LUONG_HOP_LE,
+  MUC_LUONG_GOI_Y_TIEM_NANG,
   PHONE_REGEX,
 } from '../constants.js';
 
@@ -240,6 +241,13 @@ function apDungBoLoc(query, q) {
     query = query.eq('muc_luong', mucLuong);
   }
 
+  // Chỉ lấy khách đang xếp "Thường" nhưng thu nhập đủ để cân nhắc nâng hạng
+  if (String(q.goi_y || '') === '1') {
+    query = query
+      .eq('phan_loai', 'Thường')
+      .in('muc_luong', MUC_LUONG_GOI_Y_TIEM_NANG);
+  }
+
   // Lọc theo khoảng ngày tạo. Ô "đến ngày" tính hết cả ngày hôm đó,
   // nên cộng thêm một ngày rồi so sánh nhỏ hơn.
   const tuNgay = String(q.tu_ngay || '').trim();
@@ -343,7 +351,7 @@ router.get('/stats', authMiddleware, async (_req, res) => {
 
     const { data, error } = await supabase
       .from('customers')
-      .select('phan_loai, trang_thai, hen_goi_lai')
+      .select('phan_loai, trang_thai, hen_goi_lai, muc_luong')
       .limit(TRAN);
 
     if (error) throw error;
@@ -361,17 +369,23 @@ router.get('/stats', authMiddleware, async (_req, res) => {
       trang_thai[v] = 0;
     });
 
+    const muc_luong = {};
+    MUC_LUONG_HOP_LE.forEach((v) => {
+      muc_luong[v] = 0;
+    });
+
     let denHan = 0;
 
     rows.forEach((r) => {
       if (phan_loai[r.phan_loai] !== undefined) phan_loai[r.phan_loai] += 1;
       if (trang_thai[r.trang_thai] !== undefined) trang_thai[r.trang_thai] += 1;
+      if (muc_luong[r.muc_luong] !== undefined) muc_luong[r.muc_luong] += 1;
       if (r.hen_goi_lai && new Date(r.hen_goi_lai).getTime() <= bayGio) denHan += 1;
     });
 
     return res.json({
       success: true,
-      data: { total: rows.length, den_han: denHan, phan_loai, trang_thai },
+      data: { total: rows.length, den_han: denHan, phan_loai, trang_thai, muc_luong },
     });
   } catch (err) {
     console.error('[customers/stats]', err);

@@ -1,7 +1,8 @@
 // Hằng số dùng chung cho toàn bộ giao diện.
 // Giữ khớp với backend/constants.js.
 
-export const PHAN_LOAI_LIST = ['Thường', 'Tiềm năng', 'VIP'];
+// Bỏ hạng VIP — xem giải thích ở backend/constants.js
+export const PHAN_LOAI_LIST = ['Thường', 'Tiềm năng'];
 
 // Trạng thái chăm sóc, xếp theo tiến trình tự nhiên của một khách hàng
 export const TRANG_THAI_LIST = [
@@ -17,14 +18,12 @@ export const TRANG_THAI_LIST = [
 export const PHAN_LOAI_MAU = {
   'Thường': '#0284C7',
   'Tiềm năng': '#F47920',
-  VIP: '#00813D',
 };
 
 // Badge phân loại trong bảng
 export const PHAN_LOAI_BADGE = {
   'Thường': 'bg-sky-50 text-sky-700 ring-sky-600/20',
   'Tiềm năng': 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
-  VIP: 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
 };
 
 // Badge trạng thái chăm sóc.
@@ -104,4 +103,43 @@ export const MUC_LUONG_BADGE = {
   '10 - 20 triệu': 'bg-sky-50 text-sky-700 ring-sky-600/20',
   '20 - 50 triệu': 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
   'Trên 50 triệu': 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+};
+
+// Các bậc thu nhập đủ để gợi ý nâng khách lên "Tiềm năng".
+// Giữ khớp với backend/constants.js.
+//
+// Đây là ngưỡng của riêng phòng marketing để chấm mức tiềm năng của một lead,
+// KHÔNG phải tiêu chí phân hạng khách hàng ưu tiên của ngân hàng.
+// Cố ý không gợi ý lên VIP: hạng VIP phải căn cứ số dư và tài sản thực tế,
+// mà thu nhập ở đây do khách tự khai, không có gì đối chiếu.
+export const MUC_LUONG_GOI_Y_TIEM_NANG = ['20 - 50 triệu', 'Trên 50 triệu'];
+
+/**
+ * Khách này có nên được gợi ý nâng lên "Tiềm năng" không.
+ * @param {object} c - bản ghi khách hàng
+ */
+export const nenNangHang = (c) =>
+  c?.phan_loai === 'Thường' && MUC_LUONG_GOI_Y_TIEM_NANG.includes(c?.muc_luong);
+
+// Màu cột trong biểu đồ phễu chăm sóc.
+// Tô theo KẾT QUẢ chứ không theo từng trạng thái: ba trạng thái đầu đều là
+// "đang xử lý" nên cùng một màu, tên trạng thái đã nằm sẵn ở trục nên không
+// cần màu để phân biệt. Chỉ hai kết cục cuối mới cần màu riêng.
+// Bộ ba màu này đã kiểm tra đạt cả ngưỡng phân biệt cho người mù màu.
+export const TRANG_THAI_MAU = {
+  'Mới': '#0284C7',
+  'Đã gọi': '#0284C7',
+  'Hẹn gọi lại': '#0284C7',
+  'Chốt': '#00813D',
+  'Từ chối': '#DC2626',
+};
+
+// Thang màu cho biểu đồ thu nhập. Thu nhập là dữ liệu CÓ THỨ TỰ nên dùng
+// một tông màu đậm dần thay vì các màu khác nhau — nhìn là thấy ngay bậc nào
+// cao hơn bậc nào, kể cả khi in đen trắng.
+export const MUC_LUONG_MAU = {
+  'Dưới 10 triệu': '#9FD8BC',
+  '10 - 20 triệu': '#5FB894',
+  '20 - 50 triệu': '#269A66',
+  'Trên 50 triệu': '#00813D',
 };

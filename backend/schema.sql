@@ -159,3 +159,11 @@ ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS muc_luong TEXT;
 CREATE INDEX IF NOT EXISTS idx_customers_muc_luong
   ON public.customers (muc_luong)
   WHERE muc_luong IS NOT NULL;
+
+-- ==================================================================
+-- 10. Bỏ hạng VIP khỏi phân loại
+-- ==================================================================
+-- Phân loại giờ chỉ còn Thường / Tiềm năng. Hạng khách hàng ưu tiên của
+-- ngân hàng căn cứ số dư và tài sản thực tế, không suy ra được từ dữ liệu
+-- khách tự khai trên form, nên không thuộc phạm vi công cụ này.
+UPDATE public.customers SET phan_loai = 'Tiềm năng' WHERE phan_loai = 'VIP';
