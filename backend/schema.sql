@@ -146,3 +146,16 @@ UPDATE public.users
 SET role = 'nhan_vien'
 WHERE role = 'admin'
   AND id <> (SELECT MIN(id) FROM public.users);
+
+-- ==================================================================
+-- 9. Nghề nghiệp và mức thu nhập
+-- ==================================================================
+-- Hai thông tin nghiệp vụ cơ bản để đánh giá khách hàng: nghề nghiệp
+-- quyết định tính ổn định của thu nhập, mức lương quyết định hạn mức
+-- sản phẩm mà khách đủ điều kiện.
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS nghe_nghiep TEXT;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS muc_luong TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_customers_muc_luong
+  ON public.customers (muc_luong)
+  WHERE muc_luong IS NOT NULL;

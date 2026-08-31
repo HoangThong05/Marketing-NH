@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
 import { customerAPI, getErrorMessage } from '../services/api';
-import { PHAN_LOAI_LIST } from '../constants';
+import { PHAN_LOAI_LIST, MUC_LUONG_LIST } from '../constants';
 import { chuanHoaSoDienThoai } from '../utils/dienThoai';
 import Spinner from './Spinner';
 
@@ -34,6 +34,8 @@ const BAN_DO_COT = {
   dia_chi: ['diachi', 'address'],
   phan_loai: ['phanloai', 'loai', 'nhom'],
   ghi_chu: ['ghichu', 'note', 'notes', 'ghichuthem'],
+  nghe_nghiep: ['nghenghiep', 'congviec', 'job', 'occupation'],
+  muc_luong: ['mucthunhap', 'mucluong', 'thunhap', 'luong', 'income', 'salary'],
 };
 
 /** Tìm tên cột thực tế trong file ứng với từng trường trong hệ thống */
@@ -89,6 +91,8 @@ export default function ImportModal({ open, onClose, onDone }) {
       {
         'Số điện thoại': '0901234567',
         'Tên khách hàng': 'Nguyễn Văn A',
+        'Nghề nghiệp': 'Nhân viên văn phòng',
+        'Mức thu nhập': '20 - 50 triệu',
         'Địa chỉ': '12 Nguyễn Huệ, Quận 1, TP.HCM',
         'Phân loại': 'Tiềm năng',
         'Ghi chú': 'Quan tâm vay mua nhà',
@@ -96,13 +100,23 @@ export default function ImportModal({ open, onClose, onDone }) {
       {
         'Số điện thoại': '0987654321',
         'Tên khách hàng': 'Trần Thị B',
+        'Nghề nghiệp': 'Kinh doanh, tự doanh',
+        'Mức thu nhập': 'Dưới 10 triệu',
         'Địa chỉ': '',
         'Phân loại': 'Thường',
         'Ghi chú': '',
       },
     ];
     const ws = XLSX.utils.json_to_sheet(mau);
-    ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 34 }, { wch: 12 }, { wch: 30 }];
+    ws['!cols'] = [
+      { wch: 14 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 15 },
+      { wch: 34 },
+      { wch: 12 },
+      { wch: 30 },
+    ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Khách hàng');
     XLSX.writeFile(wb, 'Mau-nhap-khach-hang-OCB.xlsx');
@@ -138,6 +152,12 @@ export default function ImportModal({ open, onClose, onDone }) {
         const sdt = chuanHoaSoDienThoai(sdtGoc);
         const ten = String(r[banDo.ten_khach_hang] ?? '').trim();
         const loai = banDo.phan_loai ? String(r[banDo.phan_loai] ?? '').trim() : '';
+        const ngheNghiep = banDo.nghe_nghiep
+          ? String(r[banDo.nghe_nghiep] ?? '').trim()
+          : '';
+        const mucLuong = banDo.muc_luong
+          ? String(r[banDo.muc_luong] ?? '').trim()
+          : '';
 
         // Bỏ qua hẳn dòng rỗng hoàn toàn.
         // Excel thường giữ lại các dòng đã từng gõ rồi xoá trong vùng dữ liệu,
@@ -156,6 +176,8 @@ export default function ImportModal({ open, onClose, onDone }) {
         else if (ten.length < 2) loi = 'Tên quá ngắn';
         else if (loai && !PHAN_LOAI_LIST.includes(loai))
           loi = `Phân loại "${loai}" không hợp lệ`;
+        else if (mucLuong && !MUC_LUONG_LIST.includes(mucLuong))
+          loi = `Mức thu nhập "${mucLuong}" không hợp lệ`;
 
         // Chỉ gửi lên những trường file thực sự có dữ liệu.
         // Gửi cả ô trống thì chế độ Cập nhật sẽ xoá mất dữ liệu đang có
@@ -169,6 +191,9 @@ export default function ImportModal({ open, onClose, onDone }) {
 
         const ghiChu = banDo.ghi_chu ? String(r[banDo.ghi_chu] ?? '').trim() : '';
         if (ghiChu) du_lieu.ghi_chu = ghiChu;
+
+        if (ngheNghiep) du_lieu.nghe_nghiep = ngheNghiep;
+        if (mucLuong) du_lieu.muc_luong = mucLuong;
 
         return { dong, loi, du_lieu };
       });
@@ -331,7 +356,8 @@ export default function ImportModal({ open, onClose, onDone }) {
                 <p className="mt-2 text-xs text-slate-500">
                   Chấp nhận .xlsx, .xls, .csv. Bắt buộc có cột{' '}
                   <strong>Số điện thoại</strong> và <strong>Tên khách hàng</strong>.
-                  Các cột Địa chỉ, Phân loại, Ghi chú là tuỳ chọn.
+                  Các cột Nghề nghiệp, Mức thu nhập, Địa chỉ, Phân loại, Ghi chú
+                  là tuỳ chọn.
                 </p>
               </div>
 

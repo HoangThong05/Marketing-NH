@@ -25,3 +25,28 @@ export const VAI_TRO_NHAN = {
   admin: 'Admin',
   nhan_vien: 'Nhân viên',
 };
+
+// Nghề nghiệp gợi ý. Danh sách này chỉ để gợi ý trên giao diện —
+// backend chấp nhận mọi chuỗi, vì "Khác" cho phép khách tự nhập.
+export const NGHE_NGHIEP_GOI_Y = [
+  'Nhân viên văn phòng',
+  'Công chức, viên chức nhà nước',
+  'Kinh doanh, tự doanh',
+  'Công nhân',
+  'Giáo viên, giảng viên',
+  'Bác sĩ, dược sĩ',
+  'Kỹ sư, kỹ thuật viên',
+  'Lao động tự do',
+  'Hưu trí',
+  'Sinh viên',
+];
+
+// Bậc thu nhập hàng tháng. Chia 4 bậc theo cách phân khúc khách hàng
+// thông dụng của ngân hàng: dưới 10 triệu thường chưa đủ điều kiện vay
+// tín chấp, trên 50 triệu thuộc nhóm khách hàng ưu tiên.
+export const MUC_LUONG_HOP_LE = [
+  'Dưới 10 triệu',
+  '10 - 20 triệu',
+  '20 - 50 triệu',
+  'Trên 50 triệu',
+];

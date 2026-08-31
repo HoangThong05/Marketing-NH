@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { customerAPI, getErrorMessage } from '../services/api';
 import Spinner from './Spinner';
 import { chuanHoaSoDienThoai } from '../utils/dienThoai';
+import { NGHE_NGHIEP_GOI_Y, MUC_LUONG_LIST } from '../constants';
 
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
 const PHAN_LOAI_OPTIONS = ['Thường', 'Tiềm năng', 'VIP'];
@@ -32,6 +33,8 @@ export default function EditCustomerModal({ customer, onClose, onSaved }) {
         ten_khach_hang: customer.ten_khach_hang || '',
         dia_chi: customer.dia_chi || '',
         phan_loai: customer.phan_loai || 'Thường',
+        nghe_nghiep: customer.nghe_nghiep || '',
+        muc_luong: customer.muc_luong || '',
         ghi_chu: customer.ghi_chu || '',
       });
     }
@@ -158,6 +161,43 @@ export default function EditCustomerModal({ customer, onClose, onSaved }) {
               {PHAN_LOAI_OPTIONS.map((loai) => (
                 <option key={loai} value={loai}>
                   {loai}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* --- Nghề nghiệp --- */}
+          <div>
+            <label htmlFor="edit_nghe_nghiep" className="form-label">
+              Nghề nghiệp
+            </label>
+            {/* Dùng input + datalist: vừa gợi ý sẵn danh sách, vừa cho phép
+                sửa thành nghề khách tự nhập ở form công khai */}
+            <input
+              id="edit_nghe_nghiep"
+              type="text"
+              list="ds-nghe-nghiep"
+              placeholder="Chọn hoặc tự nhập"
+              className="input-field"
+              {...register('nghe_nghiep')}
+            />
+            <datalist id="ds-nghe-nghiep">
+              {NGHE_NGHIEP_GOI_Y.map((nn) => (
+                <option key={nn} value={nn} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* --- Mức thu nhập --- */}
+          <div>
+            <label htmlFor="edit_muc_luong" className="form-label">
+              Mức thu nhập
+            </label>
+            <select id="edit_muc_luong" className="input-field" {...register('muc_luong')}>
+              <option value="">-- Chưa xác định --</option>
+              {MUC_LUONG_LIST.map((ml) => (
+                <option key={ml} value={ml}>
+                  {ml}
                 </option>
               ))}
             </select>

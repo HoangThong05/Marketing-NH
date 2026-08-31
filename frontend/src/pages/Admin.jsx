@@ -31,6 +31,8 @@ import {
   PHAN_LOAI_BADGE,
   TRANG_THAI_LIST,
   TRANG_THAI_BADGE,
+  MUC_LUONG_LIST,
+  MUC_LUONG_BADGE,
 } from '../constants';
 
 // Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
@@ -265,6 +267,7 @@ export default function Admin() {
   const [doiMatKhau, setDoiMatKhau] = useState(false); // modal đổi mật khẩu
   const [contacting, setContacting] = useState(null); // khách đang chăm sóc
   const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
+  const [filterMucLuong, setFilterMucLuong] = useState(''); // lọc mức thu nhập
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
   const [view, setView] = useState('khach'); // khach | taikhoan | nhatky
@@ -308,7 +311,16 @@ export default function Admin() {
   // còn 2 trang sẽ ra danh sách trống mà không hiểu vì sao.
   useEffect(() => {
     setPage(1);
-  }, [searchDebounced, filterLoai, filterTrangThai, chiHienDenHan, tuNgay, denNgay, limit]);
+  }, [
+    searchDebounced,
+    filterLoai,
+    filterTrangThai,
+    filterMucLuong,
+    chiHienDenHan,
+    tuNgay,
+    denNgay,
+    limit,
+  ]);
 
   /**
    * Tải danh sách khách hàng từ backend.
@@ -321,11 +333,20 @@ export default function Admin() {
       search: searchDebounced || undefined,
       phan_loai: filterLoai || undefined,
       trang_thai: filterTrangThai || undefined,
+      muc_luong: filterMucLuong || undefined,
       tu_ngay: tuNgay || undefined,
       den_ngay: denNgay || undefined,
       den_han: chiHienDenHan ? 1 : undefined,
     }),
-    [searchDebounced, filterLoai, filterTrangThai, tuNgay, denNgay, chiHienDenHan]
+    [
+      searchDebounced,
+      filterLoai,
+      filterTrangThai,
+      filterMucLuong,
+      tuNgay,
+      denNgay,
+      chiHienDenHan,
+    ]
   );
 
   const fetchCustomers = useCallback(
@@ -422,7 +443,13 @@ export default function Admin() {
 
   /** Có đang áp bộ lọc nào không */
   const coBoLoc = Boolean(
-    search || filterLoai || filterTrangThai || tuNgay || denNgay || chiHienDenHan
+    search ||
+      filterLoai ||
+      filterTrangThai ||
+      filterMucLuong ||
+      tuNgay ||
+      denNgay ||
+      chiHienDenHan
   );
 
   /** Xoá sạch mọi bộ lọc */
@@ -430,6 +457,7 @@ export default function Admin() {
     setSearch('');
     setFilterLoai('');
     setFilterTrangThai('');
+    setFilterMucLuong('');
     setTuNgay('');
     setDenNgay('');
     setChiHienDenHan(false);
@@ -502,6 +530,8 @@ export default function Admin() {
       STT: index + 1,
       'Số điện thoại': c.so_dien_thoai || '',
       'Tên khách hàng': c.ten_khach_hang || '',
+      'Nghề nghiệp': c.nghe_nghiep || '',
+      'Mức thu nhập': c.muc_luong || '',
       'Địa chỉ': c.dia_chi || '',
       'Phân loại': c.phan_loai || '',
       'Trạng thái': c.trang_thai || 'Mới',
@@ -529,6 +559,8 @@ export default function Admin() {
       { wch: 5 },
       { wch: 14 },
       { wch: 24 },
+      { wch: 22 },
+      { wch: 15 },
       { wch: 34 },
       { wch: 12 },
       { wch: 13 },
@@ -941,6 +973,20 @@ export default function Admin() {
                 ))}
               </select>
 
+              <select
+                value={filterMucLuong}
+                onChange={(e) => setFilterMucLuong(e.target.value)}
+                aria-label="Lọc theo mức thu nhập"
+                className="input-field sm:w-44"
+              >
+                <option value="">Tất cả thu nhập</option>
+                {MUC_LUONG_LIST.map((ml) => (
+                  <option key={ml} value={ml}>
+                    {ml}
+                  </option>
+                ))}
+              </select>
+
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -998,7 +1044,7 @@ export default function Admin() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px] text-sm">
+                <table className="w-full min-w-[1240px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-4 py-3 font-semibold">#</th>
@@ -1007,6 +1053,10 @@ export default function Admin() {
                       </ThSort>
                       <ThSort cot="ten_khach_hang" sort={sort} order={order} onSort={doiSapXep}>
                         Tên khách hàng
+                      </ThSort>
+                      <th className="px-4 py-3 font-semibold">Nghề nghiệp</th>
+                      <ThSort cot="muc_luong" sort={sort} order={order} onSort={doiSapXep}>
+                        Thu nhập
                       </ThSort>
                       <th className="px-4 py-3 font-semibold">Địa chỉ</th>
                       <ThSort cot="phan_loai" sort={sort} order={order} onSort={doiSapXep}>
@@ -1032,6 +1082,23 @@ export default function Admin() {
                           {c.so_dien_thoai}
                         </td>
                         <td className="px-4 py-3 text-slate-800">{c.ten_khach_hang}</td>
+                        <td className="max-w-[160px] truncate px-4 py-3 text-slate-600" title={c.nghe_nghiep || ''}>
+                          {c.nghe_nghiep || '—'}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {c.muc_luong ? (
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
+                                MUC_LUONG_BADGE[c.muc_luong] ||
+                                'bg-slate-100 text-slate-600 ring-slate-300'
+                              }`}
+                            >
+                              {c.muc_luong}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
                         <td className="max-w-[220px] truncate px-4 py-3 text-slate-600" title={c.dia_chi || ''}>
                           {c.dia_chi || '—'}
                         </td>

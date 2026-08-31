@@ -10,6 +10,7 @@ import { chuanHoaSoDienThoai } from '../lib/dienThoai.js';
 import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
+  MUC_LUONG_HOP_LE,
   PHONE_REGEX,
 } from '../constants.js';
 
@@ -144,6 +145,28 @@ function validateCustomer(body = {}, partial = false) {
     value.ghi_chu = String(body.ghi_chu || '').trim() || null;
   }
 
+  // --- Nghề nghiệp ---
+  // Nhận mọi chuỗi vì form có lựa chọn "Khác" cho khách tự nhập.
+  // Danh sách gợi ý chỉ nằm ở giao diện, không ràng buộc ở đây.
+  if (body.nghe_nghiep !== undefined) {
+    const nn = String(body.nghe_nghiep || '').trim();
+    if (nn.length > 100) {
+      errors.push('Nghề nghiệp không được quá 100 ký tự.');
+    } else {
+      value.nghe_nghiep = nn || null;
+    }
+  }
+
+  // --- Mức thu nhập ---
+  if (body.muc_luong !== undefined) {
+    const ml = String(body.muc_luong || '').trim();
+    if (ml && !MUC_LUONG_HOP_LE.includes(ml)) {
+      errors.push(`Mức thu nhập phải là một trong: ${MUC_LUONG_HOP_LE.join(', ')}.`);
+    } else {
+      value.muc_luong = ml || null;
+    }
+  }
+
   // --- Trạng thái chăm sóc ---
   if (body.trang_thai !== undefined) {
     const tt = String(body.trang_thai || '').trim();
@@ -170,6 +193,8 @@ const COT_SAP_XEP_HOP_LE = [
   'phan_loai',
   'trang_thai',
   'hen_goi_lai',
+  'muc_luong',
+  'nghe_nghiep',
 ];
 
 const SO_DONG_MAC_DINH = 25;
@@ -208,6 +233,11 @@ function apDungBoLoc(query, q) {
   const trangThai = String(q.trang_thai || '').trim();
   if (trangThai && TRANG_THAI_HOP_LE.includes(trangThai)) {
     query = query.eq('trang_thai', trangThai);
+  }
+
+  const mucLuong = String(q.muc_luong || '').trim();
+  if (mucLuong && MUC_LUONG_HOP_LE.includes(mucLuong)) {
+    query = query.eq('muc_luong', mucLuong);
   }
 
   // Lọc theo khoảng ngày tạo. Ô "đến ngày" tính hết cả ngày hôm đó,

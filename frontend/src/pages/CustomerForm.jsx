@@ -8,34 +8,51 @@ import { customerAPI, getErrorMessage } from '../services/api';
 import OcbLogo from '../components/OcbLogo';
 import Spinner from '../components/Spinner';
 import { chuanHoaSoDienThoai } from '../utils/dienThoai';
+import {
+  NGHE_NGHIEP_GOI_Y,
+  NGHE_NGHIEP_KHAC,
+  MUC_LUONG_LIST,
+} from '../constants';
 
 // Regex kiểm tra số điện thoại Việt Nam theo đầu số các nhà mạng
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
-
-const PHAN_LOAI_OPTIONS = ['Thường', 'Tiềm năng', 'VIP'];
 
 export default function CustomerForm() {
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
       so_dien_thoai: '',
       ten_khach_hang: '',
       dia_chi: '',
-      phan_loai: 'Thường',
+      nghe_nghiep_chon: '',
+      nghe_nghiep_khac: '',
+      muc_luong: '',
       ghi_chu: '',
     },
   });
 
+  // Chọn "Khác" thì hiện thêm ô để khách tự gõ nghề nghiệp
+  const laNgheKhac = watch('nghe_nghiep_chon') === NGHE_NGHIEP_KHAC;
+
   /** Gửi dữ liệu lên backend */
   const onSubmit = async (values) => {
     try {
+      // Gộp hai ô nghề nghiệp thành một giá trị duy nhất gửi lên server
+      const { nghe_nghiep_chon, nghe_nghiep_khac, ...phanConLai } = values;
+      const nghe_nghiep =
+        nghe_nghiep_chon === NGHE_NGHIEP_KHAC
+          ? nghe_nghiep_khac.trim()
+          : nghe_nghiep_chon;
+
       const payload = {
-        ...values,
+        ...phanConLai,
         ten_khach_hang: values.ten_khach_hang.trim(),
+        nghe_nghiep,
       };
 
       await customerAPI.create(payload);
@@ -146,22 +163,67 @@ export default function CustomerForm() {
               )}
             </div>
 
-            {/* --- Phân loại --- */}
+            {/* --- Nghề nghiệp --- */}
             <div>
-              <label htmlFor="phan_loai" className="form-label">
-                Phân loại
+              <label htmlFor="nghe_nghiep_chon" className="form-label">
+                Nghề nghiệp
               </label>
               <select
-                id="phan_loai"
+                id="nghe_nghiep_chon"
                 className="input-field"
-                {...register('phan_loai')}
+                {...register('nghe_nghiep_chon')}
               >
-                {PHAN_LOAI_OPTIONS.map((loai) => (
-                  <option key={loai} value={loai}>
-                    {loai}
+                <option value="">-- Chọn nghề nghiệp --</option>
+                {NGHE_NGHIEP_GOI_Y.map((nn) => (
+                  <option key={nn} value={nn}>
+                    {nn}
+                  </option>
+                ))}
+                <option value={NGHE_NGHIEP_KHAC}>Khác (tự nhập)</option>
+              </select>
+
+              {/* Ô tự nhập chỉ hiện khi chọn "Khác" */}
+              {laNgheKhac && (
+                <input
+                  type="text"
+                  placeholder="Nhập nghề nghiệp của quý khách"
+                  className={`input-field mt-2 ${
+                    errors.nghe_nghiep_khac ? 'input-error' : ''
+                  }`}
+                  aria-label="Nghề nghiệp khác"
+                  {...register('nghe_nghiep_khac', {
+                    validate: (v) =>
+                      !laNgheKhac ||
+                      v.trim().length >= 2 ||
+                      'Vui lòng nhập nghề nghiệp',
+                    maxLength: {
+                      value: 100,
+                      message: 'Nghề nghiệp không được quá 100 ký tự',
+                    },
+                  })}
+                />
+              )}
+              {errors.nghe_nghiep_khac && (
+                <span className="error-text">{errors.nghe_nghiep_khac.message}</span>
+              )}
+            </div>
+
+            {/* --- Mức thu nhập --- */}
+            <div>
+              <label htmlFor="muc_luong" className="form-label">
+                Mức thu nhập hàng tháng
+              </label>
+              <select id="muc_luong" className="input-field" {...register('muc_luong')}>
+                <option value="">-- Chọn mức thu nhập --</option>
+                {MUC_LUONG_LIST.map((ml) => (
+                  <option key={ml} value={ml}>
+                    {ml}
                   </option>
                 ))}
               </select>
+              <span className="mt-1 block text-xs text-slate-400">
+                Thông tin này giúp nhân viên tư vấn đúng sản phẩm phù hợp.
+              </span>
             </div>
 
             {/* --- Ghi chú --- */}

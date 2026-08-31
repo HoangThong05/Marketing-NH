@@ -71,3 +71,37 @@ export const DOI_TUONG_NHAN = {
   khach_hang: 'Khách hàng',
   tai_khoan: 'Tài khoản',
 };
+
+// Nghề nghiệp gợi ý trên form đăng ký. Khách chọn "Khác" thì tự nhập,
+// nên đây chỉ là danh sách gợi ý, không phải ràng buộc.
+export const NGHE_NGHIEP_GOI_Y = [
+  'Nhân viên văn phòng',
+  'Công chức, viên chức nhà nước',
+  'Kinh doanh, tự doanh',
+  'Công nhân',
+  'Giáo viên, giảng viên',
+  'Bác sĩ, dược sĩ',
+  'Kỹ sư, kỹ thuật viên',
+  'Lao động tự do',
+  'Hưu trí',
+  'Sinh viên',
+];
+
+// Giá trị đặc biệt cho lựa chọn "Khác" trong ô nghề nghiệp
+export const NGHE_NGHIEP_KHAC = '__khac';
+
+// Bậc thu nhập hàng tháng. Giữ khớp với backend/constants.js.
+export const MUC_LUONG_LIST = [
+  'Dưới 10 triệu',
+  '10 - 20 triệu',
+  '20 - 50 triệu',
+  'Trên 50 triệu',
+];
+
+// Badge mức thu nhập, đậm dần theo bậc để nhìn bảng là thấy ngay
+export const MUC_LUONG_BADGE = {
+  'Dưới 10 triệu': 'bg-slate-100 text-slate-700 ring-slate-300',
+  '10 - 20 triệu': 'bg-sky-50 text-sky-700 ring-sky-600/20',
+  '20 - 50 triệu': 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
+  'Trên 50 triệu': 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+};
