@@ -21,23 +21,28 @@ import OcbLogo from '../components/OcbLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import ContactModal from '../components/ContactModal';
+import {
+  PHAN_LOAI_LIST,
+  PHAN_LOAI_MAU,
+  PHAN_LOAI_BADGE,
+  TRANG_THAI_LIST,
+  TRANG_THAI_BADGE,
+} from '../constants';
 
-// Thứ tự phân loại cố định, dùng chung cho biểu đồ và bộ lọc
-const PHAN_LOAI_LIST = ['Thường', 'Tiềm năng', 'VIP'];
-
-// Màu gắn với từng phân loại. Màu đi theo phân loại chứ không theo thứ hạng,
-// nên khi lọc danh sách thì các cột còn lại vẫn giữ nguyên màu.
-const PHAN_LOAI_MAU = {
-  'Thường': '#0284C7',
-  'Tiềm năng': '#F47920',
-  VIP: '#00813D',
-};
-
-// Màu badge trong bảng
-const PHAN_LOAI_BADGE = {
-  'Thường': 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  'Tiềm năng': 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
-  VIP: 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+/** Định dạng ngày giờ theo kiểu Việt Nam */
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
 };
 
 /** Định dạng ngày theo kiểu Việt Nam */
@@ -120,6 +125,9 @@ export default function Admin() {
   const [deletingId, setDeletingId] = useState(null); // id đang xoá
   const [sidebarOpen, setSidebarOpen] = useState(false); // menu trên mobile
   const [doiMatKhau, setDoiMatKhau] = useState(false); // modal đổi mật khẩu
+  const [contacting, setContacting] = useState(null); // khách đang chăm sóc
+  const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
+  const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
 
   /** Tải danh sách khách hàng từ backend */
   const fetchCustomers = useCallback(async () => {
@@ -150,6 +158,14 @@ export default function Admin() {
     return result;
   }, [customers]);
 
+  /* --- Khách đã đến hoặc quá hạn hẹn gọi lại --- */
+  const denHan = useMemo(() => {
+    const bayGio = Date.now();
+    return customers.filter(
+      (c) => c.hen_goi_lai && new Date(c.hen_goi_lai).getTime() <= bayGio
+    );
+  }, [customers]);
+
   /* --- Dữ liệu cho biểu đồ, luôn đủ 3 cột theo thứ tự cố định --- */
   const chartData = useMemo(
     () => PHAN_LOAI_LIST.map((loai) => ({ name: loai, value: stats[loai] || 0 })),
@@ -160,9 +176,21 @@ export default function Admin() {
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
+    const bayGio = Date.now();
+
     return customers.filter((c) => {
       const khopLoai = !filterLoai || c.phan_loai === filterLoai;
       if (!khopLoai) return false;
+
+      const khopTrangThai = !filterTrangThai || c.trang_thai === filterTrangThai;
+      if (!khopTrangThai) return false;
+
+      if (chiHienDenHan) {
+        const denHanRoi =
+          c.hen_goi_lai && new Date(c.hen_goi_lai).getTime() <= bayGio;
+        if (!denHanRoi) return false;
+      }
+
       if (!keyword) return true;
 
       // Tìm theo tên hoặc số điện thoại
@@ -170,7 +198,7 @@ export default function Admin() {
       const sdt = (c.so_dien_thoai || '').toLowerCase();
       return ten.includes(keyword) || sdt.includes(keyword);
     });
-  }, [customers, search, filterLoai]);
+  }, [customers, search, filterLoai, filterTrangThai, chiHienDenHan]);
 
   /* --- Xoá khách hàng --- */
   const handleDelete = async (customer) => {
@@ -211,6 +239,8 @@ export default function Admin() {
       'Tên khách hàng': c.ten_khach_hang || '',
       'Địa chỉ': c.dia_chi || '',
       'Phân loại': c.phan_loai || '',
+      'Trạng thái': c.trang_thai || 'Mới',
+      'Hẹn gọi lại': c.hen_goi_lai ? formatDateTime(c.hen_goi_lai) : '',
       'Ghi chú': c.ghi_chu || '',
       'Ngày tạo': formatDate(c.created_at),
     }));
@@ -223,6 +253,8 @@ export default function Admin() {
       { wch: 24 },
       { wch: 34 },
       { wch: 12 },
+      { wch: 13 },
+      { wch: 17 },
       { wch: 30 },
       { wch: 12 },
     ];
@@ -394,6 +426,47 @@ export default function Admin() {
         </header>
 
         <main className="space-y-6 p-4 sm:p-6">
+          {/* ---------- Nhắc lịch gọi lại ---------- */}
+          {denHan.length > 0 && (
+            <section className="flex flex-col gap-3 rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  className="mt-0.5 shrink-0 text-amber-600"
+                >
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                  <path
+                    d="M12 7v5l3 2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <p className="text-sm text-amber-900">
+                  <span className="font-semibold">{denHan.length} khách</span> đã đến
+                  hoặc quá hạn hẹn gọi lại.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setChiHienDenHan((v) => !v);
+                  setFilterTrangThai('');
+                  setSearch('');
+                }}
+                className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+              >
+                {chiHienDenHan ? 'Bỏ lọc, xem tất cả' : 'Xem danh sách cần gọi'}
+              </button>
+            </section>
+          )}
+
           {/* ---------- 4 thẻ thống kê ---------- */}
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard label="Tổng khách hàng" value={stats.total} accent="#334155" loading={loading} />
@@ -487,12 +560,26 @@ export default function Admin() {
                 value={filterLoai}
                 onChange={(e) => setFilterLoai(e.target.value)}
                 aria-label="Lọc theo phân loại"
-                className="input-field sm:w-48"
+                className="input-field sm:w-44"
               >
                 <option value="">Tất cả phân loại</option>
                 {PHAN_LOAI_LIST.map((loai) => (
                   <option key={loai} value={loai}>
                     {loai}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filterTrangThai}
+                onChange={(e) => setFilterTrangThai(e.target.value)}
+                aria-label="Lọc theo trạng thái chăm sóc"
+                className="input-field sm:w-44"
+              >
+                <option value="">Tất cả trạng thái</option>
+                {TRANG_THAI_LIST.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
                   </option>
                 ))}
               </select>
@@ -518,6 +605,8 @@ export default function Admin() {
                     onClick={() => {
                       setSearch('');
                       setFilterLoai('');
+                      setFilterTrangThai('');
+                      setChiHienDenHan(false);
                     }}
                     className="mt-3 text-sm font-medium text-ocb-green hover:underline"
                   >
@@ -527,7 +616,7 @@ export default function Admin() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] text-sm">
+                <table className="w-full min-w-[1000px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-4 py-3 font-semibold">#</th>
@@ -535,6 +624,7 @@ export default function Admin() {
                       <th className="px-4 py-3 font-semibold">Tên khách hàng</th>
                       <th className="px-4 py-3 font-semibold">Địa chỉ</th>
                       <th className="px-4 py-3 font-semibold">Phân loại</th>
+                      <th className="px-4 py-3 font-semibold">Trạng thái</th>
                       <th className="px-4 py-3 font-semibold">Ghi chú</th>
                       <th className="px-4 py-3 font-semibold">Ngày tạo</th>
                       <th className="px-4 py-3 text-right font-semibold">Thao tác</th>
@@ -560,6 +650,27 @@ export default function Admin() {
                             {c.phan_loai || 'Thường'}
                           </span>
                         </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
+                              TRANG_THAI_BADGE[c.trang_thai] ||
+                              'bg-slate-100 text-slate-600 ring-slate-300'
+                            }`}
+                          >
+                            {c.trang_thai || 'Mới'}
+                          </span>
+                          {c.hen_goi_lai && (
+                            <span
+                              className={`mt-1 block text-xs ${
+                                new Date(c.hen_goi_lai).getTime() <= Date.now()
+                                  ? 'font-semibold text-amber-700'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              {formatDateTime(c.hen_goi_lai)}
+                            </span>
+                          )}
+                        </td>
                         <td className="max-w-[200px] truncate px-4 py-3 text-slate-600" title={c.ghi_chu || ''}>
                           {c.ghi_chu || '—'}
                         </td>
@@ -569,8 +680,15 @@ export default function Admin() {
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <button
                             type="button"
+                            onClick={() => setContacting(c)}
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange-light"
+                          >
+                            Chăm sóc
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setEditing(c)}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
+                            className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
                           >
                             Sửa
                           </button>
@@ -597,6 +715,13 @@ export default function Admin() {
       <EditCustomerModal
         customer={editing}
         onClose={() => setEditing(null)}
+        onSaved={handleSaved}
+      />
+
+      {/* ============ Modal chăm sóc khách hàng ============ */}
+      <ContactModal
+        customer={contacting}
+        onClose={() => setContacting(null)}
         onSaved={handleSaved}
       />
 

@@ -4,14 +4,14 @@ import express from 'express';
 import crypto from 'crypto';
 import { supabase } from '../supabase.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import {
+  PHAN_LOAI_HOP_LE,
+  TRANG_THAI_HOP_LE,
+  PHONE_REGEX,
+} from '../constants.js';
 
 const router = express.Router();
 
-// Regex số điện thoại Việt Nam (đầu số các nhà mạng hiện hành)
-const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
-
-// Các giá trị hợp lệ của cột phan_loai
-const PHAN_LOAI_HOP_LE = ['Thường', 'Tiềm năng', 'VIP'];
 
 /* ------------------------------------------------------------------ */
 /* Giới hạn tần suất gửi form công khai                                 */
@@ -140,6 +140,16 @@ function validateCustomer(body = {}, partial = false) {
     value.ghi_chu = String(body.ghi_chu || '').trim() || null;
   }
 
+  // --- Trạng thái chăm sóc ---
+  if (body.trang_thai !== undefined) {
+    const tt = String(body.trang_thai || '').trim();
+    if (tt && !TRANG_THAI_HOP_LE.includes(tt)) {
+      errors.push(`Trạng thái phải là một trong: ${TRANG_THAI_HOP_LE.join(', ')}.`);
+    } else {
+      value.trang_thai = tt || 'Mới';
+    }
+  }
+
   return { errors, value };
 }
 
@@ -166,6 +176,11 @@ router.get('/', authMiddleware, async (req, res) => {
     const phanLoai = String(req.query.phan_loai || '').trim();
     if (phanLoai && PHAN_LOAI_HOP_LE.includes(phanLoai)) {
       query = query.eq('phan_loai', phanLoai);
+    }
+
+    const trangThai = String(req.query.trang_thai || '').trim();
+    if (trangThai && TRANG_THAI_HOP_LE.includes(trangThai)) {
+      query = query.eq('trang_thai', trangThai);
     }
 
     const { data, error } = await query;
@@ -205,6 +220,10 @@ router.post('/', async (req, res) => {
 
     // Gán mặc định nếu form không gửi phân loại
     if (!value.phan_loai) value.phan_loai = 'Thường';
+
+    // Form công khai không được tự đặt trạng thái chăm sóc.
+    // Khách nào vừa đăng ký cũng là "Mới", nhân viên mới có quyền đổi.
+    value.trang_thai = 'Mới';
 
     const { data, error } = await supabase
       .from('customers')
@@ -334,6 +353,137 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Không thể xoá khách hàng.',
+    });
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* Lịch sử liên hệ                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * GET /api/customers/:id/contacts  (cần đăng nhập)
+ * Toàn bộ lịch sử liên hệ của một khách hàng, mới nhất lên đầu.
+ */
+router.get('/:id/contacts', authMiddleware, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
+    }
+
+    const { data, error } = await supabase
+      .from('contact_history')
+      .select('*')
+      .eq('customer_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ success: true, data: data || [] });
+  } catch (err) {
+    console.error('[contacts/GET]', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể tải lịch sử liên hệ.',
+    });
+  }
+});
+
+/**
+ * POST /api/customers/:id/contacts  (cần đăng nhập)
+ * Ghi nhận một lần liên hệ và cập nhật trạng thái hiện tại của khách hàng.
+ */
+router.post('/:id/contacts', authMiddleware, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
+    }
+
+    const trang_thai = String(req.body?.trang_thai || '').trim();
+    if (!TRANG_THAI_HOP_LE.includes(trang_thai)) {
+      return res.status(400).json({
+        success: false,
+        message: `Trạng thái phải là một trong: ${TRANG_THAI_HOP_LE.join(', ')}.`,
+      });
+    }
+
+    const ket_qua = String(req.body?.ket_qua || '').trim() || null;
+
+    // Lịch hẹn gọi lại: chỉ có ý nghĩa với trạng thái "Hẹn gọi lại"
+    let hen_goi_lai = null;
+    if (req.body?.hen_goi_lai) {
+      const d = new Date(req.body.hen_goi_lai);
+      if (Number.isNaN(d.getTime())) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Thời gian hẹn gọi lại không hợp lệ.' });
+      }
+      hen_goi_lai = d.toISOString();
+    }
+    if (trang_thai === 'Hẹn gọi lại' && !hen_goi_lai) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng chọn thời gian hẹn gọi lại.',
+      });
+    }
+    // Chuyển sang trạng thái khác thì xoá lịch hẹn cũ cho khỏi hiện nhầm
+    if (trang_thai !== 'Hẹn gọi lại') hen_goi_lai = null;
+
+    // Khách phải tồn tại thì mới ghi được lịch sử
+    const { data: khach, error: khachError } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (khachError) throw khachError;
+    if (!khach) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Không tìm thấy khách hàng.' });
+    }
+
+    const { data, error } = await supabase
+      .from('contact_history')
+      .insert([
+        {
+          customer_id: id,
+          user_id: req.user.id,
+          // Lưu kèm tên để sau này xoá tài khoản vẫn biết ai đã liên hệ
+          username: req.user.username,
+          trang_thai,
+          ket_qua,
+          hen_goi_lai,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Cập nhật trạng thái hiện tại trên bản ghi khách hàng
+    const { data: khachMoi, error: updateError } = await supabase
+      .from('customers')
+      .update({ trang_thai, hen_goi_lai })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    return res.status(201).json({
+      success: true,
+      message: 'Đã ghi nhận lần liên hệ.',
+      data,
+      customer: khachMoi,
+    });
+  } catch (err) {
+    console.error('[contacts/POST]', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể ghi nhận lần liên hệ.',
     });
   }
 });

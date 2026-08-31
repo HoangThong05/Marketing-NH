@@ -116,6 +116,9 @@ export const authAPI = {
 
 export const customerAPI = {
   getAll: () => api.get('/customers'),
+  // Lịch sử liên hệ của một khách hàng
+  getContacts: (id) => api.get(`/customers/${id}/contacts`),
+  addContact: (id, payload) => api.post(`/customers/${id}/contacts`, payload),
   create: (payload) => api.post('/customers', payload),
   update: (id, payload) => api.put(`/customers/${id}`, payload),
   remove: (id) => api.delete(`/customers/${id}`),
