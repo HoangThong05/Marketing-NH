@@ -139,6 +139,15 @@ export default function ImportModal({ open, onClose, onDone }) {
         const ten = String(r[banDo.ten_khach_hang] ?? '').trim();
         const loai = banDo.phan_loai ? String(r[banDo.phan_loai] ?? '').trim() : '';
 
+        // Bỏ qua hẳn dòng rỗng hoàn toàn.
+        // Excel thường giữ lại các dòng đã từng gõ rồi xoá trong vùng dữ liệu,
+        // nên file nhìn có 1 dòng mà đọc ra 2. Báo chúng là "lỗi" chỉ làm
+        // người dùng hoang mang vì nhìn file không thấy dòng nào sai cả.
+        const moiOTrong = Object.values(r).every(
+          (v) => String(v ?? '').trim() === ''
+        );
+        if (moiOTrong) return null;
+
         let loi = null;
         if (!sdt) loi = 'Thiếu số điện thoại';
         else if (!PHONE_REGEX.test(sdt))
@@ -164,7 +173,12 @@ export default function ImportModal({ open, onClose, onDone }) {
         return { dong, loi, du_lieu };
       });
 
-      setRows(ketQuaDoc);
+      const daLoc = ketQuaDoc.filter(Boolean);
+      if (daLoc.length === 0) {
+        throw new Error('File không có dòng dữ liệu nào.');
+      }
+
+      setRows(daLoc);
       setTenFile(file.name);
     } catch (error) {
       toast.error(error.message || 'Không đọc được file.');
