@@ -299,41 +299,49 @@ router.get('/', authMiddleware, async (req, res) => {
  * GET /api/customers/stats  (cần đăng nhập)
  * Số liệu thống kê trên TOÀN BỘ dữ liệu, không phụ thuộc bộ lọc hay trang
  * đang xem — thẻ thống kê và biểu đồ luôn nói về cả hệ thống.
+ *
+ * Chỉ dùng MỘT truy vấn rồi đếm bằng JavaScript.
+ * Bản trước chạy 10 câu đếm song song; tuy mỗi câu đều nhanh, gộp lại
+ * thành 10 kết nối HTTPS riêng trong cùng một lần gọi hàm serverless thì
+ * hay bị treo tới mức hết thời gian chờ. Một truy vấn lấy 3 cột nhỏ luôn
+ * rẻ hơn nhiều so với mười lần bắt tay TLS.
  */
 router.get('/stats', authMiddleware, async (_req, res) => {
   try {
-    /** Đếm số dòng khớp một điều kiện. head:true nên không kéo dữ liệu về */
-    const dem = async (apDung) => {
-      let q = supabase.from('customers').select('id', { count: 'exact', head: true });
-      if (apDung) q = apDung(q);
-      const { count, error } = await q;
-      if (error) throw error;
-      return count || 0;
-    };
+    // Trần an toàn: ngoài mốc này thì phải chuyển sang đếm bằng hàm SQL
+    const TRAN = 50000;
 
-    const bayGio = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('customers')
+      .select('phan_loai, trang_thai, hen_goi_lai')
+      .limit(TRAN);
 
-    // Chạy song song nên tổng độ trễ chỉ bằng một vòng gọi
-    const [total, denHan, ...soLieu] = await Promise.all([
-      dem(),
-      dem((q) => q.not('hen_goi_lai', 'is', null).lte('hen_goi_lai', bayGio)),
-      ...PHAN_LOAI_HOP_LE.map((v) => dem((q) => q.eq('phan_loai', v))),
-      ...TRANG_THAI_HOP_LE.map((v) => dem((q) => q.eq('trang_thai', v))),
-    ]);
+    if (error) throw error;
+
+    const rows = data || [];
+    const bayGio = Date.now();
 
     const phan_loai = {};
-    PHAN_LOAI_HOP_LE.forEach((v, i) => {
-      phan_loai[v] = soLieu[i];
+    PHAN_LOAI_HOP_LE.forEach((v) => {
+      phan_loai[v] = 0;
     });
 
     const trang_thai = {};
-    TRANG_THAI_HOP_LE.forEach((v, i) => {
-      trang_thai[v] = soLieu[PHAN_LOAI_HOP_LE.length + i];
+    TRANG_THAI_HOP_LE.forEach((v) => {
+      trang_thai[v] = 0;
+    });
+
+    let denHan = 0;
+
+    rows.forEach((r) => {
+      if (phan_loai[r.phan_loai] !== undefined) phan_loai[r.phan_loai] += 1;
+      if (trang_thai[r.trang_thai] !== undefined) trang_thai[r.trang_thai] += 1;
+      if (r.hen_goi_lai && new Date(r.hen_goi_lai).getTime() <= bayGio) denHan += 1;
     });
 
     return res.json({
       success: true,
-      data: { total, den_han: denHan, phan_loai, trang_thai },
+      data: { total: rows.length, den_han: denHan, phan_loai, trang_thai },
     });
   } catch (err) {
     console.error('[customers/stats]', err);

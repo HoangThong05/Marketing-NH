@@ -362,6 +362,10 @@ export default function Admin() {
     } catch (error) {
       if (error?.response?.status !== 401) {
         console.error('Không tải được thống kê:', error);
+        // Đặt số liệu rỗng để thẻ thống kê thôi hiện "--" mãi.
+        // Người dùng bấm Tải lại là thử lại được.
+        setStats((cu) => cu ?? { total: 0, den_han: 0, phan_loai: {}, trang_thai: {} });
+        toast.error('Không tải được số liệu thống kê. Bấm Tải lại để thử lại.');
       }
     }
   }, []);
@@ -682,7 +686,10 @@ export default function Admin() {
             <>
           <button
             type="button"
-            onClick={() => fetchCustomers()}
+            onClick={() => {
+              fetchCustomers();
+              fetchStats();
+            }}
             disabled={loading}
             className="btn-ghost !px-3 !py-2"
             title="Tải lại dữ liệu"
