@@ -1,6 +1,6 @@
 // Trang quản trị: thống kê, tìm kiếm, lọc và quản lý danh sách khách hàng.
 // Chỉ truy cập được sau khi đăng nhập (xem components/ProtectedRoute.jsx).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -128,6 +128,7 @@ export default function Admin() {
   const [contacting, setContacting] = useState(null); // khách đang chăm sóc
   const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
+  const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
 
   /**
    * Đồng hồ nhịp 30 giây.
@@ -165,14 +166,24 @@ export default function Admin() {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  // Quay lại tab thì tải lại ngầm, để thấy thay đổi của người khác
-  // mà không cần polling liên tục khi tab đang bị ẩn.
+  // Quay lại tab thì tải lại ngầm ngay, để thấy thay đổi của người khác.
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') fetchCustomers(true);
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchCustomers]);
+
+  // Tự động lấy dữ liệu mới mỗi 60 giây, để khách vừa đăng ký qua form
+  // công khai xuất hiện mà không phải bấm Tải lại.
+  // Chỉ chạy khi tab đang được nhìn — tab ẩn thì dữ liệu mới cũng vô nghĩa,
+  // gọi API lúc đó chỉ tốn hạn mức.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchCustomers(true);
+    }, 60000);
+    return () => clearInterval(id);
   }, [fetchCustomers]);
 
   /* --- Thống kê: đếm theo từng phân loại --- */
@@ -482,9 +493,18 @@ export default function Admin() {
               <button
                 type="button"
                 onClick={() => {
-                  setChiHienDenHan((v) => !v);
+                  const bat = !chiHienDenHan;
+                  setChiHienDenHan(bat);
                   setFilterTrangThai('');
                   setSearch('');
+                  // Bảng nằm dưới biểu đồ nên phải cuộn xuống,
+                  // nếu không người dùng bấm xong tưởng không có gì xảy ra.
+                  if (bat) {
+                    bangRef.current?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }
                 }}
                 className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
               >
@@ -557,7 +577,10 @@ export default function Admin() {
           </section>
 
           {/* ---------- Bộ lọc + bảng danh sách ---------- */}
-          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+          <section
+            ref={bangRef}
+            className="scroll-mt-20 rounded-xl bg-white shadow-sm ring-1 ring-slate-200"
+          >
             {/* Hàng công cụ tìm kiếm / lọc */}
             <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:p-5">
               <div className="relative flex-1">
