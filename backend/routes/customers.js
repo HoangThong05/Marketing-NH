@@ -608,10 +608,6 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
       }
       daGap.add(value.so_dien_thoai);
 
-      if (!value.phan_loai) value.phan_loai = 'Thường';
-      // Khách nhập từ file cũng bắt đầu ở trạng thái "Mới" như khách tự đăng ký
-      if (!value.trang_thai) value.trang_thai = 'Mới';
-
       hopLe.push({ dong, value });
     });
 
@@ -641,7 +637,13 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
     hopLe.forEach(({ value }) => {
       const idCu = banDoCu.get(value.so_dien_thoai);
       if (!idCu) {
-        themMoi.push(value);
+        // Chỉ khách MỚI mới gán giá trị mặc định. Gán cho cả bản ghi cũ
+        // sẽ biến khách VIP thành Thường chỉ vì file không có cột phân loại.
+        themMoi.push({
+          ...value,
+          phan_loai: value.phan_loai || 'Thường',
+          trang_thai: 'Mới',
+        });
       } else if (cheDo === 'cap_nhat') {
         capNhat.push({ id: idCu, value });
       } else {
@@ -660,9 +662,21 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
       // Không đụng tới trạng thái chăm sóc của khách đã có: nhập lại file
       // mà xoá mất tiến trình chăm sóc thì tai hại hơn nhiều so với lợi ích.
       const { trang_thai, ...phanConLai } = value;
+
+      // Chỉ ghi đè những trường thực sự có dữ liệu trong file.
+      // Nếu ghi đè cả trường rỗng thì một file thiếu cột Địa chỉ sẽ xoá
+      // sạch địa chỉ của mọi khách hàng trong đó — mất dữ liệu âm thầm,
+      // không có cách nào lấy lại.
+      const capNhatThat = {};
+      Object.entries(phanConLai).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && v !== '') capNhatThat[k] = v;
+      });
+
+      if (Object.keys(capNhatThat).length === 0) continue;
+
       const { error } = await supabase
         .from('customers')
-        .update(phanConLai)
+        .update(capNhatThat)
         .eq('id', id);
       if (error) throw error;
     }

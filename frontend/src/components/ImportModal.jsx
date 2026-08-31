@@ -148,18 +148,20 @@ export default function ImportModal({ open, onClose, onDone }) {
         else if (loai && !PHAN_LOAI_LIST.includes(loai))
           loi = `Phân loại "${loai}" không hợp lệ`;
 
-        return {
-          dong,
-          loi,
-          du_lieu: {
-            __dong: dong,
-            so_dien_thoai: sdt,
-            ten_khach_hang: ten,
-            dia_chi: banDo.dia_chi ? String(r[banDo.dia_chi] ?? '').trim() : '',
-            phan_loai: loai || 'Thường',
-            ghi_chu: banDo.ghi_chu ? String(r[banDo.ghi_chu] ?? '').trim() : '',
-          },
-        };
+        // Chỉ gửi lên những trường file thực sự có dữ liệu.
+        // Gửi cả ô trống thì chế độ Cập nhật sẽ xoá mất dữ liệu đang có
+        // của những cột không nằm trong file.
+        const du_lieu = { __dong: dong, so_dien_thoai: sdt, ten_khach_hang: ten };
+
+        const diaChi = banDo.dia_chi ? String(r[banDo.dia_chi] ?? '').trim() : '';
+        if (diaChi) du_lieu.dia_chi = diaChi;
+
+        if (loai) du_lieu.phan_loai = loai;
+
+        const ghiChu = banDo.ghi_chu ? String(r[banDo.ghi_chu] ?? '').trim() : '';
+        if (ghiChu) du_lieu.ghi_chu = ghiChu;
+
+        return { dong, loi, du_lieu };
       });
 
       setRows(ketQuaDoc);
@@ -407,8 +409,9 @@ export default function ImportModal({ open, onClose, onDone }) {
                           </span>
                           <span className="block text-xs text-slate-500">
                             Ghi đè tên, địa chỉ, phân loại, ghi chú bằng dữ liệu
-                            trong file. Trạng thái chăm sóc và lịch sử liên hệ
-                            vẫn giữ nguyên.
+                            trong file. Cột không có trong file hoặc ô để trống
+                            thì giữ nguyên, không bị xoá. Trạng thái chăm sóc và
+                            lịch sử liên hệ luôn được giữ.
                           </span>
                         </span>
                       </label>
