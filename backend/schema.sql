@@ -103,3 +103,35 @@ CREATE INDEX IF NOT EXISTS idx_contact_history_customer
   ON public.contact_history (customer_id, created_at DESC);
 
 ALTER TABLE public.contact_history ENABLE ROW LEVEL SECURITY;
+
+-- ==================================================================
+-- 7. Tài khoản nhân viên và nhật ký thao tác
+-- ==================================================================
+
+-- Tên hiển thị và trạng thái hoạt động của tài khoản.
+-- Nhân viên nghỉ việc thì đặt active = false chứ KHÔNG xoá, để lịch sử
+-- liên hệ và nhật ký thao tác của họ vẫn còn nguyên vẹn.
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS ho_ten TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE;
+
+UPDATE public.users SET active = TRUE WHERE active IS NULL;
+
+-- Nhật ký thao tác: ai làm gì, lúc nào. Chỉ ghi thêm, không sửa không xoá.
+CREATE TABLE IF NOT EXISTS public.activity_log (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES public.users (id) ON DELETE SET NULL,
+  -- Chụp lại tên tại thời điểm ghi, phòng khi tài khoản bị xoá hẳn
+  username TEXT,
+  hanh_dong TEXT NOT NULL,
+  doi_tuong TEXT NOT NULL,
+  doi_tuong_id INTEGER,
+  mo_ta TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_log_time
+  ON public.activity_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_log_user
+  ON public.activity_log (user_id, created_at DESC);
+
+ALTER TABLE public.activity_log ENABLE ROW LEVEL SECURITY;

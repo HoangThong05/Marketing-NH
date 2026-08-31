@@ -10,6 +10,8 @@ import dotenv from 'dotenv';
 
 import authRoutes from './routes/auth.js';
 import customerRoutes from './routes/customers.js';
+import userRoutes from './routes/users.js';
+import activityRoutes from './routes/activity.js';
 
 dotenv.config();
 
@@ -78,6 +80,8 @@ app.get('/api/health', (_req, res) => {
 // Các nhóm route chính
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/activity', activityRoutes);
 
 // Không khớp route nào
 app.use((req, res) => {

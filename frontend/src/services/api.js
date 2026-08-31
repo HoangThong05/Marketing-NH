@@ -124,4 +124,18 @@ export const customerAPI = {
   remove: (id) => api.delete(`/customers/${id}`),
 };
 
+export const userAPI = {
+  getAll: () => api.get('/users'),
+  create: (payload) => api.post('/users', payload),
+  update: (id, payload) => api.put(`/users/${id}`, payload),
+  resetPassword: (id, password) => api.put(`/users/${id}/password`, { password }),
+};
+
+export const activityAPI = {
+  getAll: (params) => api.get('/activity', { params }),
+};
+
+/** Tài khoản đang đăng nhập có phải quản trị viên không */
+export const isAdmin = () => getUser()?.role === 'admin';
+
 export default api;

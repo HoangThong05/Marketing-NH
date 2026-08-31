@@ -16,7 +16,9 @@ import {
   YAxis,
 } from 'recharts';
 
-import { customerAPI, clearAuth, getUser, getErrorMessage } from '../services/api';
+import { customerAPI, clearAuth, getUser, isAdmin, getErrorMessage } from '../services/api';
+import UserManagement from './UserManagement';
+import ActivityLog from './ActivityLog';
 import OcbLogo from '../components/OcbLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
@@ -29,6 +31,27 @@ import {
   TRANG_THAI_LIST,
   TRANG_THAI_BADGE,
 } from '../constants';
+
+// Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
+const MUC_MENU = [
+  {
+    key: 'khach',
+    nhan: 'Quản lý khách hàng',
+    icon: 'M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-12h8V3h-8v6Z',
+  },
+  {
+    key: 'taikhoan',
+    nhan: 'Tài khoản',
+    chiAdmin: true,
+    icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z',
+  },
+  {
+    key: 'nhatky',
+    nhan: 'Nhật ký thao tác',
+    chiAdmin: true,
+    icon: 'M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v1.6H8V12Zm0 3.4h8V17H8v-1.6Z',
+  },
+];
 
 /** Định dạng ngày giờ theo kiểu Việt Nam */
 const formatDateTime = (value) => {
@@ -129,6 +152,9 @@ export default function Admin() {
   const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
+  const [view, setView] = useState('khach'); // khach | taikhoan | nhatky
+
+  const quanTri = isAdmin(); // tài khoản hiện tại có quyền quản trị không
 
   /**
    * Đồng hồ nhịp 30 giây.
@@ -344,15 +370,26 @@ export default function Admin() {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          <span className="flex items-center gap-3 rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-12h8V3h-8v6Z"
-                fill="currentColor"
-              />
-            </svg>
-            Quản lý khách hàng
-          </span>
+          {MUC_MENU.filter((m) => !m.chiAdmin || quanTri).map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => {
+                setView(m.key);
+                setSidebarOpen(false);
+              }}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                view === m.key
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/75 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d={m.icon} fill="currentColor" />
+              </svg>
+              {m.nhan}
+            </button>
+          ))}
         </nav>
 
         {/* Thông tin tài khoản + đăng xuất */}
@@ -422,9 +459,11 @@ export default function Admin() {
           </button>
 
           <h1 className="flex-1 text-base font-bold text-slate-800 sm:text-lg">
-            Bảng điều khiển
+            {MUC_MENU.find((m) => m.key === view)?.nhan || 'Bảng điều khiển'}
           </h1>
 
+          {view === 'khach' && (
+            <>
           <button
             type="button"
             onClick={() => fetchCustomers()}
@@ -460,8 +499,14 @@ export default function Admin() {
             </svg>
             <span className="hidden sm:inline">Xuất Excel</span>
           </button>
+            </>
+          )}
         </header>
 
+        {view === 'taikhoan' && quanTri && <UserManagement />}
+        {view === 'nhatky' && quanTri && <ActivityLog />}
+
+        {view === 'khach' && (
         <main className="space-y-6 p-4 sm:p-6">
           {/* ---------- Nhắc lịch gọi lại ---------- */}
           {denHan.length > 0 && (
@@ -741,14 +786,17 @@ export default function Admin() {
                           >
                             Sửa
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(c)}
-                            disabled={deletingId === c.id}
-                            className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
-                          </button>
+                          {/* Chỉ quản trị viên mới được xoá khách hàng */}
+                          {quanTri && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(c)}
+                              disabled={deletingId === c.id}
+                              className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -758,6 +806,7 @@ export default function Admin() {
             )}
           </section>
         </main>
+        )}
       </div>
 
       {/* ============ Modal chỉnh sửa ============ */}

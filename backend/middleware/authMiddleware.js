@@ -33,4 +33,18 @@ export function authMiddleware(req, res, next) {
   }
 }
 
+/**
+ * Chỉ cho phép tài khoản có vai trò admin đi tiếp.
+ * Luôn đặt SAU authMiddleware, vì nó đọc req.user do middleware kia gắn vào.
+ */
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Bạn không có quyền thực hiện thao tác này.',
+    });
+  }
+  return next();
+}
+
 export default authMiddleware;

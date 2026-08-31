@@ -3,7 +3,8 @@
 import express from 'express';
 import crypto from 'crypto';
 import { supabase } from '../supabase.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
+import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
+import { ghiNhatKy } from '../lib/activityLog.js';
 import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
@@ -310,6 +311,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
         .json({ success: false, message: 'Không tìm thấy khách hàng.' });
     }
 
+    ghiNhatKy(req.user, {
+      hanh_dong: 'sua',
+      doi_tuong: 'khach_hang',
+      doi_tuong_id: id,
+      mo_ta: `Sửa khách "${data.ten_khach_hang}" (${data.so_dien_thoai}): ${Object.keys(value).join(', ')}`,
+    });
+
     return res.json({ success: true, message: 'Cập nhật thành công.', data });
   } catch (err) {
     console.error('[customers/PUT]', err);
@@ -324,7 +332,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
  * DELETE /api/customers/:id  (cần đăng nhập)
  * Xoá một khách hàng.
  */
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -346,6 +354,13 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         .status(404)
         .json({ success: false, message: 'Không tìm thấy khách hàng.' });
     }
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'xoa',
+      doi_tuong: 'khach_hang',
+      doi_tuong_id: id,
+      mo_ta: `Xoá khách "${data.ten_khach_hang}" (${data.so_dien_thoai})`,
+    });
 
     return res.json({ success: true, message: 'Đã xoá khách hàng.', data });
   } catch (err) {
@@ -472,6 +487,13 @@ router.post('/:id/contacts', authMiddleware, async (req, res) => {
       .single();
 
     if (updateError) throw updateError;
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'lien_he',
+      doi_tuong: 'khach_hang',
+      doi_tuong_id: id,
+      mo_ta: `Liên hệ khách "${khachMoi.ten_khach_hang}" (${khachMoi.so_dien_thoai}) → ${trang_thai}`,
+    });
 
     return res.status(201).json({
       success: true,

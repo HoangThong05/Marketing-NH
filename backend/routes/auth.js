@@ -111,7 +111,7 @@ router.post('/login', async (req, res) => {
     // maybeSingle() trả về null thay vì lỗi khi không tìm thấy user
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, username, password_hash, role')
+      .select('id, username, password_hash, role, ho_ten, active')
       .eq('username', username)
       .maybeSingle();
 
@@ -129,11 +129,26 @@ router.post('/login', async (req, res) => {
     const matched = await bcrypt.compare(password, user.password_hash);
     if (!matched) return res.status(401).json(invalid);
 
+    // Tài khoản bị khoá (nhân viên nghỉ việc) thì không cho vào nữa.
+    // Kiểm tra SAU khi đã đối chiếu mật khẩu, để người ngoài không dò được
+    // tài khoản nào tồn tại chỉ bằng cách xem thông báo khác nhau.
+    if (user.active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên.',
+      });
+    }
+
     return res.json({
       success: true,
       message: 'Đăng nhập thành công.',
       token: createToken(user),
-      user: { id: user.id, username: user.username, role: user.role },
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        ho_ten: user.ho_ten || null,
+      },
     });
   } catch (err) {
     console.error('[auth/login]', err);

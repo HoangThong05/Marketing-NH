@@ -37,3 +37,38 @@ export const TRANG_THAI_BADGE = {
   'Chốt': 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
   'Từ chối': 'bg-red-50 text-red-700 ring-red-200',
 };
+
+// Vai trò tài khoản. Giữ khớp với backend/constants.js.
+export const VAI_TRO_LIST = ['admin', 'nhan_vien'];
+
+export const VAI_TRO_NHAN = {
+  admin: 'Quản trị viên',
+  nhan_vien: 'Nhân viên',
+};
+
+export const VAI_TRO_BADGE = {
+  admin: 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+  nhan_vien: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+};
+
+// Nhãn hiển thị cho từng loại hành động trong nhật ký
+export const HANH_DONG_NHAN = {
+  tao: 'Tạo mới',
+  sua: 'Chỉnh sửa',
+  xoa: 'Xoá',
+  lien_he: 'Liên hệ',
+  doi_mat_khau: 'Đổi mật khẩu',
+};
+
+export const HANH_DONG_BADGE = {
+  tao: 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+  sua: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+  xoa: 'bg-red-50 text-red-700 ring-red-200',
+  lien_he: 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
+  doi_mat_khau: 'bg-amber-50 text-amber-800 ring-amber-300',
+};
+
+export const DOI_TUONG_NHAN = {
+  khach_hang: 'Khách hàng',
+  tai_khoan: 'Tài khoản',
+};
