@@ -129,9 +129,25 @@ export default function Admin() {
   const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
 
-  /** Tải danh sách khách hàng từ backend */
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true);
+  /**
+   * Đồng hồ nhịp 30 giây.
+   * React chỉ vẽ lại khi state đổi, mà thời gian trôi qua thì không phải
+   * là state. Không có nhịp này thì khách đến giờ hẹn vẫn nằm im cho tới
+   * khi người dùng bấm Tải lại hoặc F5.
+   */
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  /**
+   * Tải danh sách khách hàng từ backend.
+   * @param {boolean} silent - true thì không hiện spinner toàn trang,
+   *   dùng cho lần tải lại ngầm khi người dùng quay lại tab.
+   */
+  const fetchCustomers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await customerAPI.getAll();
       setCustomers(data.data || []);
@@ -149,6 +165,16 @@ export default function Admin() {
     fetchCustomers();
   }, [fetchCustomers]);
 
+  // Quay lại tab thì tải lại ngầm, để thấy thay đổi của người khác
+  // mà không cần polling liên tục khi tab đang bị ẩn.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchCustomers(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchCustomers]);
+
   /* --- Thống kê: đếm theo từng phân loại --- */
   const stats = useMemo(() => {
     const result = { total: customers.length };
@@ -160,11 +186,11 @@ export default function Admin() {
 
   /* --- Khách đã đến hoặc quá hạn hẹn gọi lại --- */
   const denHan = useMemo(() => {
-    const bayGio = Date.now();
+    const bayGio = now;
     return customers.filter(
       (c) => c.hen_goi_lai && new Date(c.hen_goi_lai).getTime() <= bayGio
     );
-  }, [customers]);
+  }, [customers, now]);
 
   /* --- Dữ liệu cho biểu đồ, luôn đủ 3 cột theo thứ tự cố định --- */
   const chartData = useMemo(
@@ -176,7 +202,7 @@ export default function Admin() {
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    const bayGio = Date.now();
+    const bayGio = now;
 
     return customers.filter((c) => {
       const khopLoai = !filterLoai || c.phan_loai === filterLoai;
@@ -198,7 +224,7 @@ export default function Admin() {
       const sdt = (c.so_dien_thoai || '').toLowerCase();
       return ten.includes(keyword) || sdt.includes(keyword);
     });
-  }, [customers, search, filterLoai, filterTrangThai, chiHienDenHan]);
+  }, [customers, search, filterLoai, filterTrangThai, chiHienDenHan, now]);
 
   /* --- Xoá khách hàng --- */
   const handleDelete = async (customer) => {
@@ -390,7 +416,7 @@ export default function Admin() {
 
           <button
             type="button"
-            onClick={fetchCustomers}
+            onClick={() => fetchCustomers()}
             disabled={loading}
             className="btn-ghost !px-3 !py-2"
             title="Tải lại dữ liệu"
@@ -662,7 +688,7 @@ export default function Admin() {
                           {c.hen_goi_lai && (
                             <span
                               className={`mt-1 block text-xs ${
-                                new Date(c.hen_goi_lai).getTime() <= Date.now()
+                                new Date(c.hen_goi_lai).getTime() <= now
                                   ? 'font-semibold text-amber-700'
                                   : 'text-slate-400'
                               }`}
