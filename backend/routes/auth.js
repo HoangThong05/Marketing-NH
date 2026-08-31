@@ -190,8 +190,11 @@ router.put('/password', authMiddleware, async (req, res) => {
 
     const matched = await bcrypt.compare(current, user.password_hash);
     if (!matched) {
+      // Dùng 403 chứ KHÔNG dùng 401: người dùng vẫn đang đăng nhập hợp lệ,
+      // chỉ là nhập sai mật khẩu cũ. Trả 401 sẽ bị frontend hiểu nhầm là
+      // token hết hạn và đá thẳng ra trang đăng nhập.
       return res
-        .status(401)
+        .status(403)
         .json({ success: false, message: 'Mật khẩu hiện tại không đúng.' });
     }
 

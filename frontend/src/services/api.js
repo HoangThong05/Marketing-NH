@@ -73,7 +73,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Các endpoint /auth/* tự trả 401 cho những lý do KHÔNG phải hết hạn token
+    // (sai mật khẩu khi đăng nhập chẳng hạn). Đá người dùng ra trang login
+    // trong những trường hợp đó sẽ nuốt mất thông báo lỗi, nên bỏ qua chúng.
+    const laAuthRequest = (error.config?.url || '').includes('/auth/');
+
+    if (error.response?.status === 401 && !laAuthRequest) {
       clearAuth();
       // Chỉ chuyển hướng khi đang ở trang cần đăng nhập,
       // tránh làm gián đoạn form công khai ở trang chủ.

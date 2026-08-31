@@ -12,6 +12,7 @@ import {
   getErrorMessage,
 } from '../services/api';
 import OcbLogo from '../components/OcbLogo';
+import PasswordInput from '../components/PasswordInput';
 import Spinner from '../components/Spinner';
 
 export default function Login() {
@@ -116,12 +117,11 @@ export default function Login() {
                 <label htmlFor="password" className="form-label">
                   Mật khẩu
                 </label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className={`input-field ${errors.password ? 'input-error' : ''}`}
+                  className={errors.password ? 'input-error' : ''}
                   aria-invalid={errors.password ? 'true' : 'false'}
                   {...register('password', {
                     required: 'Vui lòng nhập mật khẩu',

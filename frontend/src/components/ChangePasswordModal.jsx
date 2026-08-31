@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 import { authAPI, getErrorMessage } from '../services/api';
 import Spinner from './Spinner';
+import PasswordInput from './PasswordInput';
 
 /**
  * @param {object} props
@@ -58,8 +59,8 @@ export default function ChangePasswordModal({ open, onClose, onDone }) {
     } catch (error) {
       const message = getErrorMessage(error, 'Không thể đổi mật khẩu.');
 
-      // Sai mật khẩu hiện tại thì báo ngay dưới đúng ô đó
-      if (error?.response?.status === 401) {
+      // Backend trả 403 khi mật khẩu hiện tại sai — báo ngay dưới đúng ô đó
+      if (error?.response?.status === 403) {
         setError('current_password', { type: 'manual', message });
       }
       toast.error(message);
@@ -104,11 +105,10 @@ export default function ChangePasswordModal({ open, onClose, onDone }) {
             <label htmlFor="current_password" className="form-label">
               Mật khẩu hiện tại <span className="text-red-500">*</span>
             </label>
-            <input
+            <PasswordInput
               id="current_password"
-              type="password"
               autoComplete="current-password"
-              className={`input-field ${errors.current_password ? 'input-error' : ''}`}
+              className={errors.current_password ? 'input-error' : ''}
               {...register('current_password', {
                 required: 'Vui lòng nhập mật khẩu hiện tại',
               })}
@@ -123,11 +123,10 @@ export default function ChangePasswordModal({ open, onClose, onDone }) {
             <label htmlFor="new_password" className="form-label">
               Mật khẩu mới <span className="text-red-500">*</span>
             </label>
-            <input
+            <PasswordInput
               id="new_password"
-              type="password"
               autoComplete="new-password"
-              className={`input-field ${errors.new_password ? 'input-error' : ''}`}
+              className={errors.new_password ? 'input-error' : ''}
               {...register('new_password', {
                 required: 'Vui lòng nhập mật khẩu mới',
                 minLength: {
@@ -153,11 +152,10 @@ export default function ChangePasswordModal({ open, onClose, onDone }) {
             <label htmlFor="confirm_password" className="form-label">
               Nhập lại mật khẩu mới <span className="text-red-500">*</span>
             </label>
-            <input
+            <PasswordInput
               id="confirm_password"
-              type="password"
               autoComplete="new-password"
-              className={`input-field ${errors.confirm_password ? 'input-error' : ''}`}
+              className={errors.confirm_password ? 'input-error' : ''}
               {...register('confirm_password', {
                 required: 'Vui lòng nhập lại mật khẩu mới',
                 validate: (v) =>
