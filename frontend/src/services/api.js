@@ -3,6 +3,8 @@ import axios from 'axios';
 
 const TOKEN_KEY = 'ocb_token';
 const USER_KEY = 'ocb_user';
+// Lý do bị đăng xuất, để trang login còn hiện thông báo cho người dùng biết
+const LOGOUT_REASON_KEY = 'ocb_logout_reason';
 
 /* ------------------------------------------------------------------ */
 /* Tiện ích thao tác với localStorage                                   */
@@ -83,6 +85,16 @@ api.interceptors.response.use(
       // Chỉ chuyển hướng khi đang ở trang cần đăng nhập,
       // tránh làm gián đoạn form công khai ở trang chủ.
       if (window.location.pathname.startsWith('/admin')) {
+        // Chuyển trang bằng window.location sẽ xoá sạch toast đang hiện,
+        // nên gửi lý do sang trang login qua sessionStorage để hiện lại ở đó.
+        const message = error.response?.data?.message;
+        if (message) {
+          try {
+            sessionStorage.setItem(LOGOUT_REASON_KEY, message);
+          } catch {
+            // Trình duyệt chặn sessionStorage thì bỏ qua, không đáng để vỡ luồng
+          }
+        }
         window.location.href = '/login';
       }
     }
@@ -133,6 +145,20 @@ export const userAPI = {
 
 export const activityAPI = {
   getAll: (params) => api.get('/activity', { params }),
+};
+
+/**
+ * Lấy và xoá lý do bị đăng xuất lần trước (nếu có).
+ * Đọc một lần rồi xoá, để tải lại trang login không hiện lại thông báo cũ.
+ */
+export const takeLogoutReason = () => {
+  try {
+    const reason = sessionStorage.getItem(LOGOUT_REASON_KEY);
+    if (reason) sessionStorage.removeItem(LOGOUT_REASON_KEY);
+    return reason;
+  } catch {
+    return null;
+  }
 };
 
 /** Tài khoản đang đăng nhập có phải quản trị viên không */

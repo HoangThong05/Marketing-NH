@@ -9,6 +9,7 @@ import {
   setToken,
   setUser,
   isTokenValid,
+  takeLogoutReason,
   getErrorMessage,
 } from '../services/api';
 import OcbLogo from '../components/OcbLogo';
@@ -37,6 +38,13 @@ export default function Login() {
       navigate(from, { replace: true });
     }
   }, [from, navigate]);
+
+  // Bị đá ra khỏi trang admin (token hết hạn, tài khoản bị khoá...) thì
+  // hiện lại lý do ở đây, vì toast bên trang cũ đã mất khi chuyển trang.
+  useEffect(() => {
+    const reason = takeLogoutReason();
+    if (reason) toast.error(reason, { duration: 6000 });
+  }, []);
 
   const onSubmit = async (values) => {
     try {
