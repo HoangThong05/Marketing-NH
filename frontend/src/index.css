@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+}
+
+@layer components {
+  /* Ô nhập liệu dùng chung cho toàn bộ form */
+  .input-field {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm
+           text-slate-800 outline-none transition
+           placeholder:text-slate-400
+           focus:border-ocb-green focus:ring-2 focus:ring-ocb-green/20;
+  }
+
+  /* Trạng thái lỗi của ô nhập liệu */
+  .input-error {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/20;
+  }
+
+  /* Nhãn phía trên ô nhập liệu */
+  .form-label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+
+  /* Dòng báo lỗi nhỏ màu đỏ ngay dưới input */
+  .error-text {
+    @apply mt-1 block text-xs font-medium text-red-600;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5
+           text-sm font-semibold transition
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn bg-ocb-green text-white hover:bg-ocb-green-dark
+           focus:ring-2 focus:ring-ocb-green/30;
+  }
+
+  .btn-orange {
+    @apply btn bg-ocb-orange text-white hover:bg-ocb-orange-dark
+           focus:ring-2 focus:ring-ocb-orange/30;
+  }
+
+  .btn-ghost {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+}
+
+/* Thanh cuộn mảnh cho bảng danh sách */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}

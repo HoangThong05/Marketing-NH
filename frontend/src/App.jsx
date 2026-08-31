@@ -1,0 +1,52 @@
+// Khai báo router của ứng dụng.
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+
+import CustomerForm from './pages/CustomerForm';
+import Login from './pages/Login';
+import Admin from './pages/Admin';
+import ProtectedRoute from './components/ProtectedRoute';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      {/* Toast dùng chung cho mọi trang */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3500,
+          style: {
+            background: '#1e293b',
+            color: '#fff',
+            fontSize: '14px',
+            borderRadius: '10px',
+            padding: '12px 16px',
+          },
+          success: { iconTheme: { primary: '#00813D', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#dc2626', secondary: '#fff' } },
+        }}
+      />
+
+      <Routes>
+        {/* Trang công khai - khách hàng tự điền thông tin */}
+        <Route path="/" element={<CustomerForm />} />
+
+        {/* Trang đăng nhập cho nhân viên */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Trang quản trị - bắt buộc đăng nhập */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <Admin />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Đường dẫn lạ thì đưa về trang chủ */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

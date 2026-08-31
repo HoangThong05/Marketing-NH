@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Biến môi trường - KHÔNG commit file .env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+dist/
+build/
+
+# Log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Cache
+.vite/
+.cache/
+coverage/
+
+# Vercel
+.vercel
