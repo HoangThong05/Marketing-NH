@@ -132,6 +132,8 @@ export const customerAPI = {
   // Lấy toàn bộ dữ liệu khớp bộ lọc (không phân trang) để xuất Excel
   exportAll: (params) => api.get('/customers/export', { params }),
   importRows: (payload) => api.post('/customers/import', payload),
+  setPhuTrach: (id, phu_trach_id) =>
+    api.put(`/customers/${id}/phu-trach`, { phu_trach_id }),
   // Lịch sử liên hệ của một khách hàng
   getContacts: (id) => api.get(`/customers/${id}/contacts`),
   addContact: (id, payload) => api.post(`/customers/${id}/contacts`, payload),
@@ -142,6 +144,8 @@ export const customerAPI = {
 
 export const userAPI = {
   getAll: () => api.get('/users'),
+  // Danh bạ rút gọn, nhân viên thường cũng gọi được
+  danhBa: () => api.get('/users/danh-ba'),
   create: (payload) => api.post('/users', payload),
   update: (id, payload) => api.put(`/users/${id}`, payload),
   resetPassword: (id, password) => api.put(`/users/${id}/password`, { password }),

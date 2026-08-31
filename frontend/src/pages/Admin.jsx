@@ -16,7 +16,14 @@ import {
   YAxis,
 } from 'recharts';
 
-import { customerAPI, clearAuth, getUser, isAdmin, getErrorMessage } from '../services/api';
+import {
+  customerAPI,
+  userAPI,
+  clearAuth,
+  getUser,
+  isAdmin,
+  getErrorMessage,
+} from '../services/api';
 import UserManagement from './UserManagement';
 import ActivityLog from './ActivityLog';
 import OcbLogo from '../components/OcbLogo';
@@ -272,6 +279,9 @@ export default function Admin() {
   const [filterMucLuong, setFilterMucLuong] = useState(''); // lọc mức thu nhập
   const [chiHienGoiY, setChiHienGoiY] = useState(false); // chỉ khách nên nâng hạng
   const [nangHangId, setNangHangId] = useState(null); // id đang nâng hạng
+  const [danhBa, setDanhBa] = useState([]); // danh sách nhân viên để gán
+  const [filterPhuTrach, setFilterPhuTrach] = useState(''); // '' | 'me' | 'none'
+  const [dangGanId, setDangGanId] = useState(null); // id đang đổi phụ trách
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
   const [view, setView] = useState('khach'); // khach | taikhoan | nhatky
@@ -320,6 +330,7 @@ export default function Admin() {
     filterLoai,
     filterTrangThai,
     filterMucLuong,
+    filterPhuTrach,
     chiHienDenHan,
     chiHienGoiY,
     tuNgay,
@@ -343,6 +354,7 @@ export default function Admin() {
       den_ngay: denNgay || undefined,
       den_han: chiHienDenHan ? 1 : undefined,
       goi_y: chiHienGoiY ? 1 : undefined,
+      phu_trach: filterPhuTrach || undefined,
     }),
     [
       searchDebounced,
@@ -353,6 +365,7 @@ export default function Admin() {
       denNgay,
       chiHienDenHan,
       chiHienGoiY,
+      filterPhuTrach,
     ]
   );
 
@@ -405,6 +418,44 @@ export default function Admin() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Danh bạ nhân viên, dùng cho ô chọn người phụ trách và hiển thị tên.
+  // Chỉ tải một lần: danh sách tài khoản rất ít khi thay đổi.
+  useEffect(() => {
+    userAPI
+      .danhBa()
+      .then(({ data }) => setDanhBa(data.data || []))
+      .catch((error) => {
+        if (error?.response?.status !== 401) {
+          console.error('Không tải được danh bạ nhân viên:', error);
+        }
+      });
+  }, []);
+
+  /** Tra tên hiển thị của một nhân viên theo id */
+  const tenNhanVien = useCallback(
+    (id) => {
+      if (!id) return null;
+      const nv = danhBa.find((u) => u.id === id);
+      return nv ? nv.ho_ten || nv.username : `#${id}`;
+    },
+    [danhBa]
+  );
+
+  /** Gán hoặc bỏ người phụ trách một khách hàng */
+  const doiPhuTrach = async (customer, phuTrachId) => {
+    setDangGanId(customer.id);
+    try {
+      const { data } = await customerAPI.setPhuTrach(customer.id, phuTrachId);
+      handleSaved(data.data);
+      fetchStats();
+      toast.success(data.message);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không thể đổi người phụ trách.'));
+    } finally {
+      setDangGanId(null);
+    }
+  };
 
   // Quay lại tab thì tải lại ngầm ngay, để thấy thay đổi của người khác.
   useEffect(() => {
@@ -467,7 +518,8 @@ export default function Admin() {
       tuNgay ||
       denNgay ||
       chiHienDenHan ||
-      chiHienGoiY
+      chiHienGoiY ||
+      filterPhuTrach
   );
 
   /** Xoá sạch mọi bộ lọc */
@@ -480,6 +532,7 @@ export default function Admin() {
     setDenNgay('');
     setChiHienDenHan(false);
     setChiHienGoiY(false);
+    setFilterPhuTrach('');
   };
 
   /**
@@ -570,6 +623,7 @@ export default function Admin() {
       STT: index + 1,
       'Số điện thoại': c.so_dien_thoai || '',
       'Tên khách hàng': c.ten_khach_hang || '',
+      'Phụ trách': tenNhanVien(c.phu_trach_id) || '',
       'Nghề nghiệp': c.nghe_nghiep || '',
       'Mức thu nhập': c.muc_luong || '',
       'Địa chỉ': c.dia_chi || '',
@@ -599,6 +653,7 @@ export default function Admin() {
       { wch: 5 },
       { wch: 14 },
       { wch: 24 },
+      { wch: 18 },
       { wch: 22 },
       { wch: 15 },
       { wch: 34 },
@@ -1120,6 +1175,37 @@ export default function Admin() {
 
               <button
                 type="button"
+                onClick={() =>
+                  setFilterPhuTrach((v) => (v === 'me' ? '' : 'me'))
+                }
+                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  filterPhuTrach === 'me'
+                    ? 'bg-ocb-green text-white'
+                    : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                Của tôi
+                {stats?.cua_toi ? ` (${stats.cua_toi})` : ''}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setFilterPhuTrach((v) => (v === 'none' ? '' : 'none'))
+                }
+                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  filterPhuTrach === 'none'
+                    ? 'bg-ocb-orange text-white'
+                    : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
+                }`}
+                title="Khách chưa ai nhận phụ trách"
+              >
+                Chưa giao
+                {stats?.chua_giao ? ` (${stats.chua_giao})` : ''}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setChiHienGoiY((v) => !v)}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   chiHienGoiY
@@ -1168,7 +1254,7 @@ export default function Admin() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1240px] text-sm">
+                <table className="w-full min-w-[1400px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-4 py-3 font-semibold">#</th>
@@ -1178,6 +1264,7 @@ export default function Admin() {
                       <ThSort cot="ten_khach_hang" sort={sort} order={order} onSort={doiSapXep}>
                         Tên khách hàng
                       </ThSort>
+                      <th className="px-4 py-3 font-semibold">Phụ trách</th>
                       <th className="px-4 py-3 font-semibold">Nghề nghiệp</th>
                       <ThSort cot="muc_luong" sort={sort} order={order} onSort={doiSapXep}>
                         Thu nhập
@@ -1206,6 +1293,53 @@ export default function Admin() {
                           {c.so_dien_thoai}
                         </td>
                         <td className="px-4 py-3 text-slate-800">{c.ten_khach_hang}</td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {dangGanId === c.id ? (
+                            <Spinner size="sm" className="text-ocb-green" />
+                          ) : quanTri ? (
+                            /* Admin đổi được người phụ trách bất kỳ lúc nào */
+                            <select
+                              value={c.phu_trach_id || ''}
+                              onChange={(e) =>
+                                doiPhuTrach(c, e.target.value || null)
+                              }
+                              aria-label="Người phụ trách"
+                              className="max-w-[150px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs outline-none focus:border-ocb-green"
+                            >
+                              <option value="">— Chưa giao —</option>
+                              {danhBa.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.ho_ten || u.username}
+                                </option>
+                              ))}
+                            </select>
+                          ) : c.phu_trach_id === user?.id ? (
+                            /* Khách của chính mình: hiện tên kèm nút trả lại */
+                            <span className="text-slate-800">
+                              Tôi
+                              <button
+                                type="button"
+                                onClick={() => doiPhuTrach(c, null)}
+                                className="ml-2 text-xs font-medium text-slate-400 underline decoration-dotted underline-offset-2 hover:text-red-600"
+                              >
+                                bỏ
+                              </button>
+                            </span>
+                          ) : c.phu_trach_id ? (
+                            <span className="text-slate-600">
+                              {tenNhanVien(c.phu_trach_id)}
+                            </span>
+                          ) : (
+                            /* Chưa ai nhận: nhân viên tự nhận được */
+                            <button
+                              type="button"
+                              onClick={() => doiPhuTrach(c, user?.id)}
+                              className="rounded-lg bg-ocb-orange-light px-2.5 py-1 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange hover:text-white"
+                            >
+                              Nhận
+                            </button>
+                          )}
+                        </td>
                         <td className="max-w-[160px] truncate px-4 py-3 text-slate-600" title={c.nghe_nghiep || ''}>
                           {c.nghe_nghiep || '—'}
                         </td>

@@ -241,6 +241,17 @@ function apDungBoLoc(query, q) {
     query = query.eq('muc_luong', mucLuong);
   }
 
+  // Lọc theo người phụ trách.
+  // 'me' = của tôi, 'none' = chưa ai nhận, số = của đúng người đó.
+  const phuTrach = String(q.phu_trach || '').trim();
+  if (phuTrach === 'none') {
+    query = query.is('phu_trach_id', null);
+  } else if (phuTrach === 'me') {
+    query = query.eq('phu_trach_id', q.__userId);
+  } else if (/^\d+$/.test(phuTrach)) {
+    query = query.eq('phu_trach_id', Number(phuTrach));
+  }
+
   // Chỉ lấy khách đang xếp "Thường" nhưng thu nhập đủ để cân nhắc nâng hạng
   if (String(q.goi_y || '') === '1') {
     query = query
@@ -310,7 +321,8 @@ router.get('/', authMiddleware, async (req, res) => {
       .order('id', { ascending: false })
       .range(tu, den);
 
-    query = apDungBoLoc(query, req.query);
+    // apDungBoLoc cần biết ai đang đăng nhập để hiểu bộ lọc "của tôi"
+    query = apDungBoLoc(query, { ...req.query, __userId: req.user.id });
 
     const { data, count, error } = await query;
     if (error) throw error;
@@ -344,14 +356,14 @@ router.get('/', authMiddleware, async (req, res) => {
  * hay bị treo tới mức hết thời gian chờ. Một truy vấn lấy 3 cột nhỏ luôn
  * rẻ hơn nhiều so với mười lần bắt tay TLS.
  */
-router.get('/stats', authMiddleware, async (_req, res) => {
+router.get('/stats', authMiddleware, async (req, res) => {
   try {
     // Trần an toàn: ngoài mốc này thì phải chuyển sang đếm bằng hàm SQL
     const TRAN = 50000;
 
     const { data, error } = await supabase
       .from('customers')
-      .select('phan_loai, trang_thai, hen_goi_lai, muc_luong')
+      .select('phan_loai, trang_thai, hen_goi_lai, muc_luong, phu_trach_id')
       .limit(TRAN);
 
     if (error) throw error;
@@ -375,8 +387,18 @@ router.get('/stats', authMiddleware, async (_req, res) => {
     });
 
     let denHan = 0;
+    let chuaGiao = 0;
+    let cuaToi = 0;
+    let cuaToiDenHan = 0;
 
     rows.forEach((r) => {
+      if (r.phu_trach_id === null || r.phu_trach_id === undefined) chuaGiao += 1;
+      if (r.phu_trach_id === req.user.id) {
+        cuaToi += 1;
+        if (r.hen_goi_lai && new Date(r.hen_goi_lai).getTime() <= bayGio) {
+          cuaToiDenHan += 1;
+        }
+      }
       if (phan_loai[r.phan_loai] !== undefined) phan_loai[r.phan_loai] += 1;
       if (trang_thai[r.trang_thai] !== undefined) trang_thai[r.trang_thai] += 1;
       if (muc_luong[r.muc_luong] !== undefined) muc_luong[r.muc_luong] += 1;
@@ -385,7 +407,16 @@ router.get('/stats', authMiddleware, async (_req, res) => {
 
     return res.json({
       success: true,
-      data: { total: rows.length, den_han: denHan, phan_loai, trang_thai, muc_luong },
+      data: {
+        total: rows.length,
+        den_han: denHan,
+        chua_giao: chuaGiao,
+        cua_toi: cuaToi,
+        cua_toi_den_han: cuaToiDenHan,
+        phan_loai,
+        trang_thai,
+        muc_luong,
+      },
     });
   } catch (err) {
     console.error('[customers/stats]', err);
@@ -409,7 +440,7 @@ router.get('/export', authMiddleware, async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(10000);
 
-    query = apDungBoLoc(query, req.query);
+    query = apDungBoLoc(query, { ...req.query, __userId: req.user.id });
 
     const { data, error } = await query;
     if (error) throw error;
@@ -595,6 +626,112 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
       success: false,
       message: 'Không thể xoá khách hàng.',
     });
+  }
+});
+
+/**
+ * PUT /api/customers/:id/phu-trach  (cần đăng nhập)
+ * Gán hoặc bỏ người phụ trách một khách hàng.
+ *
+ * Body: { phu_trach_id: number | null }
+ *
+ * Quyền:
+ *   - admin      : gán cho bất kỳ ai, hoặc bỏ trống
+ *   - nhân viên  : chỉ tự nhận khách CHƯA ai nhận, và chỉ bỏ khách của mình
+ *
+ * Giới hạn này để một nhân viên không giành được khách đang thuộc về đồng
+ * nghiệp. Cần chuyển giao thì admin làm, và nhật ký ghi lại ai đã chuyển.
+ */
+router.put('/:id/phu-trach', authMiddleware, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
+    }
+
+    const raw = req.body?.phu_trach_id;
+    const moi = raw === null || raw === '' || raw === undefined ? null : Number(raw);
+    if (moi !== null && (!Number.isInteger(moi) || moi <= 0)) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Người phụ trách không hợp lệ.' });
+    }
+
+    const { data: khach, error: khachError } = await supabase
+      .from('customers')
+      .select('id, ten_khach_hang, so_dien_thoai, phu_trach_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (khachError) throw khachError;
+    if (!khach) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Không tìm thấy khách hàng.' });
+    }
+
+    const laAdmin = req.user.role === 'admin';
+    const cu = khach.phu_trach_id ?? null;
+
+    if (!laAdmin) {
+      const tuNhan = moi === req.user.id && cu === null;
+      const tuBo = moi === null && cu === req.user.id;
+      if (!tuNhan && !tuBo) {
+        return res.status(403).json({
+          success: false,
+          message:
+            'Bạn chỉ được nhận khách chưa ai phụ trách, hoặc bỏ khách của chính mình.',
+        });
+      }
+    }
+
+    // Người được gán phải là tài khoản đang hoạt động
+    let tenMoi = null;
+    if (moi !== null) {
+      const { data: nv, error: nvError } = await supabase
+        .from('users')
+        .select('id, username, ho_ten, active')
+        .eq('id', moi)
+        .maybeSingle();
+
+      if (nvError) throw nvError;
+      if (!nv || nv.active === false) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tài khoản được chọn không tồn tại hoặc đã bị khoá.',
+        });
+      }
+      tenMoi = nv.ho_ten || nv.username;
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .update({ phu_trach_id: moi })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'sua',
+      doi_tuong: 'khach_hang',
+      doi_tuong_id: id,
+      mo_ta: moi
+        ? `Giao khách "${khach.ten_khach_hang}" (${khach.so_dien_thoai}) cho ${tenMoi}`
+        : `Bỏ người phụ trách khách "${khach.ten_khach_hang}" (${khach.so_dien_thoai})`,
+    });
+
+    return res.json({
+      success: true,
+      message: moi ? `Đã giao cho ${tenMoi}.` : 'Đã bỏ người phụ trách.',
+      data,
+    });
+  } catch (err) {
+    console.error('[customers/phu-trach]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể đổi người phụ trách.' });
   }
 });
 

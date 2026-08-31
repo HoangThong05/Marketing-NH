@@ -8,7 +8,34 @@ import { ghiNhatKy } from '../lib/activityLog.js';
 
 const router = express.Router();
 
-// Mọi route trong file này đều yêu cầu đăng nhập và có quyền admin
+/**
+ * GET /api/users/danh-ba  (chỉ cần đăng nhập)
+ *
+ * Danh bạ rút gọn các tài khoản đang hoạt động, để đổ vào ô chọn người
+ * phụ trách và hiển thị tên trong bảng khách hàng.
+ *
+ * Đặt TRƯỚC router.use(requireAdmin) bên dưới nên nhân viên thường cũng
+ * gọi được. Chỉ trả tên, không có vai trò hay bất kỳ thông tin nhạy cảm nào.
+ */
+router.get('/danh-ba', authMiddleware, async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, ho_ten')
+      .eq('active', true)
+      .order('id');
+
+    if (error) throw error;
+    return res.json({ success: true, data: data || [] });
+  } catch (err) {
+    console.error('[users/danh-ba]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể tải danh bạ nhân viên.' });
+  }
+});
+
+// Các route còn lại trong file này đều yêu cầu quyền admin
 router.use(authMiddleware, requireAdmin);
 
 // Các cột được phép trả về. KHÔNG bao giờ trả password_hash ra ngoài.

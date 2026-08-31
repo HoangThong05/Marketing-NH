@@ -167,3 +167,21 @@ CREATE INDEX IF NOT EXISTS idx_customers_muc_luong
 -- ngân hàng căn cứ số dư và tài sản thực tế, không suy ra được từ dữ liệu
 -- khách tự khai trên form, nên không thuộc phạm vi công cụ này.
 UPDATE public.customers SET phan_loai = 'Tiềm năng' WHERE phan_loai = 'VIP';
+
+-- ==================================================================
+-- 11. Nhân viên phụ trách khách hàng
+-- ==================================================================
+-- ON DELETE SET NULL: xoá tài khoản thì khách quay về trạng thái chưa giao
+-- chứ không bị xoá theo. Dù vậy nên KHOÁ tài khoản thay vì xoá — xem mục
+-- quản lý tài khoản trong giao diện.
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS phu_trach_id INTEGER
+  REFERENCES public.users (id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_customers_phu_trach
+  ON public.customers (phu_trach_id);
+
+-- Lọc nhanh nhóm khách chưa ai nhận
+CREATE INDEX IF NOT EXISTS idx_customers_chua_giao
+  ON public.customers (created_at DESC)
+  WHERE phu_trach_id IS NULL;
