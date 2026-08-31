@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 
 import { userAPI, getUser, getErrorMessage } from '../services/api';
-import { VAI_TRO_LIST, VAI_TRO_NHAN, VAI_TRO_BADGE } from '../constants';
+import { VAI_TRO_NHAN, VAI_TRO_BADGE } from '../constants';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import PasswordInput from '../components/PasswordInput';
 
@@ -33,7 +33,7 @@ function CreateUserModal({ open, onClose, onCreated }) {
     setError,
     formState: { errors, isSubmitting },
   } = useForm({
-    defaultValues: { username: '', ho_ten: '', password: '', role: 'nhan_vien' },
+    defaultValues: { username: '', ho_ten: '', password: '' },
   });
 
   useEffect(() => {
@@ -55,7 +55,6 @@ function CreateUserModal({ open, onClose, onCreated }) {
         username: values.username.trim().toLowerCase(),
         ho_ten: values.ho_ten.trim(),
         password: values.password,
-        role: values.role,
       });
       toast.success('Đã tạo tài khoản.');
       onCreated(data.data);
@@ -155,22 +154,11 @@ function CreateUserModal({ open, onClose, onCreated }) {
             )}
           </div>
 
-          <div>
-            <label htmlFor="u_role" className="form-label">
-              Vai trò
-            </label>
-            <select id="u_role" className="input-field" {...register('role')}>
-              {VAI_TRO_LIST.map((r) => (
-                <option key={r} value={r}>
-                  {VAI_TRO_NHAN[r]}
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-xs text-slate-400">
-              Nhân viên: xem và chăm sóc khách. Quản trị viên: thêm cả quyền xoá
-              khách, quản lý tài khoản và xem nhật ký.
-            </span>
-          </div>
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 ring-1 ring-slate-200">
+            Tài khoản tạo ở đây luôn là <strong>Nhân viên</strong>: xem danh
+            sách, chăm sóc và sửa thông tin khách. Không xoá được khách, không
+            vào được mục Tài khoản và Nhật ký.
+          </p>
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="btn-ghost flex-1">
@@ -369,6 +357,7 @@ export default function UserManagement() {
               <tbody className="divide-y divide-slate-100">
                 {users.map((u) => {
                   const laToi = u.id === me?.id;
+                  const laAdmin = u.role === 'admin';
                   const dangLuu = savingId === u.id;
 
                   return (
@@ -420,23 +409,7 @@ export default function UserManagement() {
 
                             <button
                               type="button"
-                              disabled={laToi}
-                              onClick={() =>
-                                capNhat(
-                                  u,
-                                  { role: u.role === 'admin' ? 'nhan_vien' : 'admin' },
-                                  'Đã đổi vai trò.'
-                                )
-                              }
-                              className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                              title={laToi ? 'Không thể tự đổi vai trò của mình' : ''}
-                            >
-                              {u.role === 'admin' ? 'Hạ xuống NV' : 'Nâng lên QTV'}
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={laToi}
+                              disabled={laToi || laAdmin}
                               onClick={() =>
                                 capNhat(
                                   u,
@@ -449,7 +422,13 @@ export default function UserManagement() {
                                   ? 'text-red-600 hover:bg-red-50'
                                   : 'text-ocb-green hover:bg-ocb-green-light'
                               }`}
-                              title={laToi ? 'Không thể tự khoá tài khoản của mình' : ''}
+                              title={
+                                laAdmin
+                                  ? 'Không thể khoá tài khoản quản trị'
+                                  : laToi
+                                    ? 'Không thể tự khoá tài khoản của mình'
+                                    : ''
+                              }
                             >
                               {u.active ? 'Khoá' : 'Mở khoá'}
                             </button>
@@ -465,11 +444,19 @@ export default function UserManagement() {
         )}
       </section>
 
-      <p className="text-xs text-slate-500">
-        Nhân viên nghỉ việc thì <strong>khoá tài khoản</strong> chứ không xoá — như
-        vậy lịch sử liên hệ và nhật ký thao tác của họ vẫn còn nguyên để đối chiếu
-        sau này. Tài khoản bị khoá sẽ không đăng nhập được nữa.
-      </p>
+      <div className="space-y-2 text-xs text-slate-500">
+        <p>
+          Quyền <strong>Admin</strong> là cấp cao nhất và chỉ thuộc về tài khoản
+          gốc của hệ thống. Không nâng quyền cho tài khoản khác được, và cũng
+          không ai khoá được tài khoản Admin — kể cả chính nó.
+        </p>
+        <p>
+          Nhân viên nghỉ việc thì <strong>khoá tài khoản</strong> chứ không xoá —
+          như vậy lịch sử liên hệ và nhật ký thao tác của họ vẫn còn nguyên để
+          đối chiếu sau này. Khoá xong họ mất quyền ngay lập tức, không đợi hết
+          phiên đăng nhập.
+        </p>
+      </div>
 
       <CreateUserModal
         open={creating}

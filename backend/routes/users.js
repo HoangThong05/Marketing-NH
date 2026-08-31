@@ -5,7 +5,6 @@ import bcrypt from 'bcryptjs';
 import { supabase } from '../supabase.js';
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
-import { VAI_TRO_HOP_LE } from '../constants.js';
 
 const router = express.Router();
 
@@ -48,7 +47,10 @@ router.post('/', async (req, res) => {
     const username = String(req.body?.username || '').trim().toLowerCase();
     const password = String(req.body?.password || '');
     const ho_ten = String(req.body?.ho_ten || '').trim() || null;
-    const role = String(req.body?.role || 'nhan_vien').trim();
+
+    // Tài khoản tạo qua giao diện LUÔN là nhân viên.
+    // Quyền admin chỉ thuộc về tài khoản gốc, không cấp thêm được.
+    const role = 'nhan_vien';
 
     if (!USERNAME_REGEX.test(username)) {
       return res.status(400).json({
@@ -62,13 +64,6 @@ router.post('/', async (req, res) => {
         .status(400)
         .json({ success: false, message: 'Mật khẩu phải có ít nhất 8 ký tự.' });
     }
-    if (!VAI_TRO_HOP_LE.includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: `Vai trò phải là một trong: ${VAI_TRO_HOP_LE.join(', ')}.`,
-      });
-    }
-
     const password_hash = await bcrypt.hash(password, 10);
 
     const { data, error } = await supabase
@@ -91,7 +86,7 @@ router.post('/', async (req, res) => {
       hanh_dong: 'tao',
       doi_tuong: 'tai_khoan',
       doi_tuong_id: data.id,
-      mo_ta: `Tạo tài khoản "${username}" (${role})`,
+      mo_ta: `Tạo tài khoản nhân viên "${username}"`,
     });
 
     return res
@@ -120,15 +115,14 @@ router.put('/:id', async (req, res) => {
     if (req.body?.ho_ten !== undefined) {
       patch.ho_ten = String(req.body.ho_ten || '').trim() || null;
     }
+    // Vai trò cố định, không sửa qua API được. Quyền admin gắn với tài khoản
+    // gốc; nâng quyền cho người khác nghĩa là họ khoá được cả chính chủ.
     if (req.body?.role !== undefined) {
-      const role = String(req.body.role).trim();
-      if (!VAI_TRO_HOP_LE.includes(role)) {
-        return res.status(400).json({
-          success: false,
-          message: `Vai trò phải là một trong: ${VAI_TRO_HOP_LE.join(', ')}.`,
-        });
-      }
-      patch.role = role;
+      return res.status(400).json({
+        success: false,
+        message:
+          'Không thể thay đổi vai trò. Quyền quản trị chỉ thuộc về tài khoản gốc.',
+      });
     }
     if (req.body?.active !== undefined) {
       patch.active = Boolean(req.body.active);
@@ -140,37 +134,29 @@ router.put('/:id', async (req, res) => {
         .json({ success: false, message: 'Không có dữ liệu nào để cập nhật.' });
     }
 
-    // Không cho tự hạ quyền hoặc tự khoá chính mình, tránh trường hợp
-    // admin cuối cùng tự khoá rồi không ai vào quản lý được nữa.
-    if (id === req.user.id) {
-      if (patch.role && patch.role !== 'admin') {
-        return res.status(400).json({
-          success: false,
-          message: 'Không thể tự hạ quyền quản trị của chính mình.',
-        });
-      }
-      if (patch.active === false) {
-        return res.status(400).json({
-          success: false,
-          message: 'Không thể tự khoá tài khoản của chính mình.',
-        });
-      }
+    // Không cho tự khoá chính mình
+    if (id === req.user.id && patch.active === false) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể tự khoá tài khoản của chính mình.',
+      });
     }
 
-    // Giữ ít nhất một admin đang hoạt động trong hệ thống
-    if (patch.role === 'nhan_vien' || patch.active === false) {
-      const { count, error: countError } = await supabase
+    // Không ai được khoá tài khoản quản trị, kể cả chính nó.
+    // Khoá được nghĩa là mất quyền vào hệ thống mà không có đường khôi phục
+    // nào ngoài việc sửa tay trong database.
+    if (patch.active === false) {
+      const { data: muc, error: mucError } = await supabase
         .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', 'admin')
-        .eq('active', true);
+        .select('role')
+        .eq('id', id)
+        .maybeSingle();
 
-      if (countError) throw countError;
-      if ((count || 0) <= 1) {
+      if (mucError) throw mucError;
+      if (muc?.role === 'admin') {
         return res.status(400).json({
           success: false,
-          message:
-            'Đây là quản trị viên đang hoạt động duy nhất. Hãy tạo hoặc kích hoạt một quản trị viên khác trước.',
+          message: 'Không thể khoá tài khoản quản trị.',
         });
       }
     }

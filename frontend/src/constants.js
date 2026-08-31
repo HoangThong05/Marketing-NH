@@ -39,10 +39,9 @@ export const TRANG_THAI_BADGE = {
 };
 
 // Vai trò tài khoản. Giữ khớp với backend/constants.js.
-export const VAI_TRO_LIST = ['admin', 'nhan_vien'];
-
+// 'admin' là cấp cao nhất và CHỈ thuộc về tài khoản gốc của hệ thống.
 export const VAI_TRO_NHAN = {
-  admin: 'Quản trị viên',
+  admin: 'Admin',
   nhan_vien: 'Nhân viên',
 };
 

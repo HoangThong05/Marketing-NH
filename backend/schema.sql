@@ -135,3 +135,14 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_user
   ON public.activity_log (user_id, created_at DESC);
 
 ALTER TABLE public.activity_log ENABLE ROW LEVEL SECURITY;
+
+-- ==================================================================
+-- 8. Chỉ tài khoản gốc mới có quyền quản trị
+-- ==================================================================
+-- Vai trò 'admin' là cấp cao nhất và chỉ thuộc về tài khoản đầu tiên
+-- của hệ thống. Mọi tài khoản khác đều là 'nhan_vien'.
+-- Câu lệnh này hạ quyền các tài khoản admin phát sinh thêm (nếu có).
+UPDATE public.users
+SET role = 'nhan_vien'
+WHERE role = 'admin'
+  AND id <> (SELECT MIN(id) FROM public.users);
