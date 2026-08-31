@@ -259,7 +259,7 @@ export default function Admin() {
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/15 px-5 py-5">
-          <OcbLogo size="md" light />
+          <OcbLogo size="md" />
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}

@@ -66,7 +66,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo trên nền xanh */}
         <div className="mb-6 flex justify-center">
-          <OcbLogo size="lg" light />
+          <OcbLogo size="lg" />
         </div>
 
         <div className="animate-fade-in-up overflow-hidden rounded-2xl bg-white shadow-2xl">
