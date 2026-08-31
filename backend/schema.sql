@@ -45,3 +45,19 @@ CREATE INDEX IF NOT EXISTS idx_customers_created_at ON public.customers (created
 -- không đưa vào frontend hay commit lên GitHub.
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- ==================================================================
+-- 5. Nhật ký gửi form, dùng để giới hạn tần suất (rate limit)
+-- ==================================================================
+-- Chỉ lưu HMAC-SHA256 của địa chỉ IP, không lưu IP gốc, để không
+-- giữ dữ liệu định danh người dùng lâu hơn mức cần thiết.
+CREATE TABLE IF NOT EXISTS public.submission_log (
+  id SERIAL PRIMARY KEY,
+  ip_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_submission_log_ip_time
+  ON public.submission_log (ip_hash, created_at DESC);
+
+ALTER TABLE public.submission_log ENABLE ROW LEVEL SECURITY;

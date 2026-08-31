@@ -1,6 +1,7 @@
 // Route quản lý khách hàng.
 // POST là public (form khách tự điền), các thao tác còn lại yêu cầu đăng nhập.
 import express from 'express';
+import crypto from 'crypto';
 import { supabase } from '../supabase.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
@@ -11,6 +12,78 @@ const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
 
 // Các giá trị hợp lệ của cột phan_loai
 const PHAN_LOAI_HOP_LE = ['Thường', 'Tiềm năng', 'VIP'];
+
+/* ------------------------------------------------------------------ */
+/* Giới hạn tần suất gửi form công khai                                 */
+/* ------------------------------------------------------------------ */
+
+// Số lần gửi thành công tối đa từ một IP trong một giờ
+const GIOI_HAN_MOI_GIO = 5;
+const MOT_GIO_MS = 60 * 60 * 1000;
+
+/**
+ * Lấy IP thật của người gửi.
+ * Trên Vercel, request đi qua CDN nên IP gốc nằm ở header x-forwarded-for.
+ */
+function layIP(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string' && xff.trim()) {
+    // Header có thể là chuỗi nhiều IP, IP đầu tiên là của người dùng
+    return xff.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+/**
+ * Băm IP bằng HMAC-SHA256 để không lưu địa chỉ IP gốc vào database.
+ * Dùng JWT_SECRET làm khoá băm nên không thể dò ngược ra IP.
+ */
+function bamIP(ip) {
+  return crypto
+    .createHmac('sha256', process.env.JWT_SECRET || 'muoi-mac-dinh')
+    .update(ip)
+    .digest('hex');
+}
+
+/**
+ * Đếm số lần IP này đã gửi thành công trong một giờ qua.
+ *
+ * Cố tình "fail-open": nếu truy vấn lỗi (mất mạng, chưa tạo bảng...) thì
+ * cho qua thay vì chặn. Đây là form thu thập khách hàng tiềm năng —
+ * chặn nhầm một khách thật tốn kém hơn là lọt một bản ghi rác.
+ *
+ * @returns {Promise<{ vuot: boolean, ipHash: string }>}
+ */
+async function kiemTraGioiHan(req) {
+  const ipHash = bamIP(layIP(req));
+
+  try {
+    const motGioTruoc = new Date(Date.now() - MOT_GIO_MS).toISOString();
+    const { count, error } = await supabase
+      .from('submission_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('ip_hash', ipHash)
+      .gte('created_at', motGioTruoc);
+
+    if (error) throw error;
+
+    // Supabase trả về status 204 với count = null (KHÔNG kèm error) khi bảng
+    // chưa được tạo. Nếu chỉ coi null là 0 thì giới hạn sẽ âm thầm vô hiệu
+    // mà không có dấu hiệu gì. Bắt riêng trường hợp này để còn biết đường sửa.
+    if (typeof count !== 'number') {
+      throw new Error(
+        'Không đếm được submission_log — bảng có thể chưa được tạo. ' +
+          'Chạy backend/schema.sql trong Supabase SQL Editor.'
+      );
+    }
+
+    return { vuot: count >= GIOI_HAN_MOI_GIO, ipHash };
+  } catch (err) {
+    // Cố tình cho qua khi kiểm tra thất bại, nhưng phải ghi log rõ ràng
+    console.warn('[rate-limit] KHÔNG kiểm tra được, tạm cho qua:', err.message);
+    return { vuot: false, ipHash };
+  }
+}
 
 /**
  * Kiểm tra và chuẩn hoá dữ liệu khách hàng gửi lên.
@@ -119,6 +192,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: errors[0], errors });
     }
 
+    // Chặn gửi hàng loạt từ cùng một IP.
+    // Kiểm tra sau khi validate để dữ liệu sai không tính vào hạn mức.
+    const { vuot, ipHash } = await kiemTraGioiHan(req);
+    if (vuot) {
+      return res.status(429).json({
+        success: false,
+        message:
+          'Bạn đã gửi quá nhiều lần. Vui lòng thử lại sau một giờ hoặc liên hệ trực tiếp nhân viên OCB.',
+      });
+    }
+
     // Gán mặc định nếu form không gửi phân loại
     if (!value.phan_loai) value.phan_loai = 'Thường';
 
@@ -138,6 +222,15 @@ router.post('/', async (req, res) => {
       }
       throw error;
     }
+
+    // Ghi nhận lần gửi thành công. Không await lỗi làm hỏng phản hồi:
+    // khách đã lưu được rồi, sổ nhật ký hỏng cũng không nên báo lỗi cho họ.
+    supabase
+      .from('submission_log')
+      .insert([{ ip_hash: ipHash }])
+      .then(({ error: logError }) => {
+        if (logError) console.error('[rate-limit] Không ghi được nhật ký:', logError.message);
+      });
 
     return res.status(201).json({
       success: true,

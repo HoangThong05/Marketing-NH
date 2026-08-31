@@ -16,6 +16,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trên Vercel, request đi qua CDN nên IP gốc nằm trong x-forwarded-for.
+// Bật trust proxy để req.ip trả về IP thật thay vì IP của CDN.
+app.set('trust proxy', 1);
+
 // Danh sách origin được phép gọi API (đọc từ .env, cách nhau bằng dấu phẩy).
 // Mỗi mục có thể chứa dấu * để khớp nhiều tên miền,
 // ví dụ: https://*.vercel.app khớp mọi bản preview của Vercel.

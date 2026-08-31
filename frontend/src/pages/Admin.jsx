@@ -20,6 +20,7 @@ import { customerAPI, clearAuth, getUser, getErrorMessage } from '../services/ap
 import OcbLogo from '../components/OcbLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 // Thứ tự phân loại cố định, dùng chung cho biểu đồ và bộ lọc
 const PHAN_LOAI_LIST = ['Thường', 'Tiềm năng', 'VIP'];
@@ -118,6 +119,7 @@ export default function Admin() {
   const [editing, setEditing] = useState(null); // khách hàng đang sửa
   const [deletingId, setDeletingId] = useState(null); // id đang xoá
   const [sidebarOpen, setSidebarOpen] = useState(false); // menu trên mobile
+  const [doiMatKhau, setDoiMatKhau] = useState(false); // modal đổi mật khẩu
 
   /** Tải danh sách khách hàng từ backend */
   const fetchCustomers = useCallback(async () => {
@@ -292,6 +294,30 @@ export default function Admin() {
               {user?.username || 'admin'}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setDoiMatKhau(true)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect
+                x="4"
+                y="10"
+                width="16"
+                height="10"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M8 10V7a4 4 0 0 1 8 0v3"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+            Đổi mật khẩu
+          </button>
           <button
             type="button"
             onClick={handleLogout}
@@ -572,6 +598,13 @@ export default function Admin() {
         customer={editing}
         onClose={() => setEditing(null)}
         onSaved={handleSaved}
+      />
+
+      {/* ============ Modal đổi mật khẩu ============ */}
+      <ChangePasswordModal
+        open={doiMatKhau}
+        onClose={() => setDoiMatKhau(false)}
+        onDone={handleLogout}
       />
     </div>
   );

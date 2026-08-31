@@ -3,6 +3,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../supabase.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -139,6 +140,78 @@ router.post('/login', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Lỗi hệ thống. Vui lòng thử lại.',
+    });
+  }
+});
+
+/**
+ * PUT /api/auth/password  (cần đăng nhập)
+ * Đổi mật khẩu của chính tài khoản đang đăng nhập.
+ *
+ * Bắt nhập lại mật khẩu hiện tại để nếu ai đó mượn được máy đang mở sẵn
+ * phiên đăng nhập thì vẫn không tự đổi mật khẩu chiếm tài khoản được.
+ */
+router.put('/password', authMiddleware, async (req, res) => {
+  try {
+    const current = String(req.body?.current_password || '');
+    const next = String(req.body?.new_password || '');
+
+    if (!current || !next) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.',
+      });
+    }
+    if (next.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu mới phải có ít nhất 8 ký tự.',
+      });
+    }
+    if (next === current) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu mới phải khác mật khẩu hiện tại.',
+      });
+    }
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, password_hash')
+      .eq('id', req.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Không tìm thấy tài khoản.' });
+    }
+
+    const matched = await bcrypt.compare(current, user.password_hash);
+    if (!matched) {
+      return res
+        .status(401)
+        .json({ success: false, message: 'Mật khẩu hiện tại không đúng.' });
+    }
+
+    const password_hash = await bcrypt.hash(next, 10);
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash })
+      .eq('id', user.id);
+
+    if (updateError) throw updateError;
+
+    return res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.',
+    });
+  } catch (err) {
+    console.error('[auth/password]', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể đổi mật khẩu. Vui lòng thử lại.',
     });
   }
 });

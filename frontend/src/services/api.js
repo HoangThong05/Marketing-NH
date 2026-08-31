@@ -106,6 +106,7 @@ export const getErrorMessage = (error, fallback = 'Đã có lỗi xảy ra.') =>
 export const authAPI = {
   login: (payload) => api.post('/auth/login', payload),
   register: (payload) => api.post('/auth/register', payload),
+  changePassword: (payload) => api.put('/auth/password', payload),
 };
 
 export const customerAPI = {

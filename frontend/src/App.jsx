@@ -1,11 +1,17 @@
 // Khai báo router của ứng dụng.
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import CustomerForm from './pages/CustomerForm';
 import Login from './pages/Login';
-import Admin from './pages/Admin';
 import ProtectedRoute from './components/ProtectedRoute';
+import { LoadingBlock } from './components/Spinner';
+
+// Trang Admin kéo theo recharts và xlsx, cộng lại gần 800 KB.
+// Tách ra thành gói riêng để khách vào trang đăng ký (trang công khai,
+// lượt truy cập nhiều nhất) không phải tải phần mã họ không bao giờ dùng.
+const Admin = lazy(() => import('./pages/Admin'));
 
 export default function App() {
   return (
@@ -34,12 +40,20 @@ export default function App() {
         {/* Trang đăng nhập cho nhân viên */}
         <Route path="/login" element={<Login />} />
 
-        {/* Trang quản trị - bắt buộc đăng nhập */}
+        {/* Trang quản trị - bắt buộc đăng nhập, tải theo yêu cầu */}
         <Route
           path="/admin"
           element={
             <ProtectedRoute>
-              <Admin />
+              <Suspense
+                fallback={
+                  <div className="flex min-h-screen items-center justify-center bg-slate-50">
+                    <LoadingBlock label="Đang mở trang quản trị..." />
+                  </div>
+                }
+              >
+                <Admin />
+              </Suspense>
             </ProtectedRoute>
           }
         />
