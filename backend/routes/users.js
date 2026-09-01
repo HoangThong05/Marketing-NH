@@ -230,6 +230,21 @@ router.put('/:id/password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
     }
 
+    // Không cho tự đặt lại mật khẩu của chính mình qua đường này.
+    //
+    // Endpoint này cố tình KHÔNG hỏi mật khẩu cũ, vì nó dành cho admin đặt
+    // lại hộ nhân viên quên mật khẩu. Nếu admin dùng nó cho chính mình thì
+    // sẽ đi vòng qua yêu cầu nhập mật khẩu hiện tại — ai mượn được máy đang
+    // mở sẵn phiên đăng nhập là chiếm được tài khoản.
+    // Đổi mật khẩu của bản thân phải qua PUT /api/auth/password.
+    if (id === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Dùng chức năng "Đổi mật khẩu" để đổi mật khẩu của chính bạn — cần nhập mật khẩu hiện tại.',
+      });
+    }
+
     const password = String(req.body?.password || '');
     if (password.length < 8) {
       return res

@@ -399,13 +399,18 @@ export default function UserManagement() {
                           <Spinner size="sm" className="ml-auto text-ocb-green" />
                         ) : (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => setResetting(u)}
-                              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
-                            >
-                              Đặt lại MK
-                            </button>
+                            {/* Không hiện trên dòng của chính mình: đổi mật khẩu
+                                bản thân phải qua "Đổi mật khẩu" ở sidebar,
+                                vì chỗ đó bắt nhập mật khẩu hiện tại */}
+                            {!laToi && (
+                              <button
+                                type="button"
+                                onClick={() => setResetting(u)}
+                                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
+                              >
+                                Đặt lại MK
+                              </button>
+                            )}
 
                             <button
                               type="button"
