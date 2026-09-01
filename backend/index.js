@@ -8,6 +8,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import { supabase } from './supabase.js';
 import authRoutes from './routes/auth.js';
 import customerRoutes from './routes/customers.js';
 import userRoutes from './routes/users.js';
@@ -75,6 +76,30 @@ app.use((req, _res, next) => {
 // Kiểm tra server còn sống
 app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'Server đang chạy', time: new Date() });
+});
+
+/**
+ * GET /api/health/db
+ * Kiểm tra kết nối tới database.
+ *
+ * Có hai công dụng: chẩn đoán khi nghi ngờ mất kết nối, và giữ cho project
+ * Supabase gói miễn phí không bị tạm dừng — nó tự dừng sau 7 ngày không có
+ * truy vấn nào, kéo theo form đăng ký công khai chết luôn.
+ *
+ * Cố ý KHÔNG trả về số liệu gì: endpoint này không cần đăng nhập, để lộ số
+ * lượng khách hàng ra ngoài là không cần thiết.
+ */
+app.get('/api/health/db', async (_req, res) => {
+  try {
+    const { error } = await supabase.from('customers').select('id').limit(1);
+    if (error) throw error;
+    res.json({ success: true, message: 'Database phản hồi bình thường' });
+  } catch (err) {
+    console.error('[health/db]', err.message);
+    res
+      .status(503)
+      .json({ success: false, message: 'Không kết nối được database.' });
+  }
 });
 
 // Các nhóm route chính

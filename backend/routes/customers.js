@@ -218,6 +218,14 @@ const SO_DONG_TOI_DA = 200;
  * tránh cảnh hai nơi lệch nhau rồi xuất ra dữ liệu khác với đang xem.
  */
 function apDungBoLoc(query, q) {
+  // Mặc định giấu khách đã xoá. Chỉ khi hỏi thẳng thùng rác (da_xoa=1)
+  // mới lấy ra. Đặt ngay đầu hàm để không có đường nào lọt.
+  if (String(q.da_xoa || '') === '1') {
+    query = query.not('deleted_at', 'is', null);
+  } else {
+    query = query.is('deleted_at', null);
+  }
+
   const search = String(q.search || '').trim();
   if (search) {
     // Chuỗi chỉ gồm chữ số (bỏ qua khoảng trắng, dấu chấm, gạch ngang)
@@ -406,6 +414,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
     const { data, error } = await supabase
       .from('customers')
       .select('phan_loai, trang_thai, hen_goi_lai, muc_luong, phu_trach_id')
+      .is('deleted_at', null)
       .limit(TRAN);
 
     if (error) throw error;
@@ -534,6 +543,43 @@ router.post('/', async (req, res) => {
     if (error) {
       // 23505 = vi phạm ràng buộc UNIQUE của cột so_dien_thoai
       if (error.code === '23505') {
+        // Có thể số này thuộc một khách đang nằm trong thùng rác.
+        // Khách quay lại đăng ký thì khôi phục hồ sơ cũ kèm toàn bộ lịch sử,
+        // thay vì báo lỗi trùng cho một bản ghi họ không nhìn thấy.
+        const { data: daXoa } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('so_dien_thoai', value.so_dien_thoai)
+          .not('deleted_at', 'is', null)
+          .maybeSingle();
+
+        if (daXoa) {
+          const { data: phucHoi, error: loiPhucHoi } = await supabase
+            .from('customers')
+            .update({ ...value, deleted_at: null, deleted_by: null })
+            .eq('id', daXoa.id)
+            .select()
+            .single();
+
+          if (loiPhucHoi) throw loiPhucHoi;
+
+          ghiNhatKy(
+            { id: null, username: '(khách tự đăng ký)' },
+            {
+              hanh_dong: 'tao',
+              doi_tuong: 'khach_hang',
+              doi_tuong_id: daXoa.id,
+              mo_ta: `Khách "${phucHoi.ten_khach_hang}" (${phucHoi.so_dien_thoai}) đăng ký lại, hồ sơ trong thùng rác được khôi phục`,
+            }
+          );
+
+          return res.status(201).json({
+            success: true,
+            message: 'Đăng ký thông tin thành công.',
+            data: phucHoi,
+          });
+        }
+
         return res.status(409).json({
           success: false,
           message: 'Số điện thoại này đã được đăng ký trước đó.',
@@ -652,11 +698,13 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
     }
 
-    // .select() để biết bản ghi có thực sự tồn tại hay không
+    // Xoá MỀM: chỉ đánh dấu, dữ liệu và lịch sử liên hệ vẫn nguyên vẹn.
+    // Xoá thật là thao tác riêng ở DELETE /:id/vinh-vien.
     const { data, error } = await supabase
       .from('customers')
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), deleted_by: req.user.username })
       .eq('id', id)
+      .is('deleted_at', null)
       .select()
       .maybeSingle();
 
@@ -672,16 +720,132 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
       hanh_dong: 'xoa',
       doi_tuong: 'khach_hang',
       doi_tuong_id: id,
-      mo_ta: `Xoá khách "${data.ten_khach_hang}" (${data.so_dien_thoai})`,
+      mo_ta: `Chuyển khách "${data.ten_khach_hang}" (${data.so_dien_thoai}) vào thùng rác`,
     });
 
-    return res.json({ success: true, message: 'Đã xoá khách hàng.', data });
+    return res.json({
+      success: true,
+      message: 'Đã chuyển vào thùng rác. Khôi phục lại được.',
+      data,
+    });
   } catch (err) {
     console.error('[customers/DELETE]', err);
     return res.status(500).json({
       success: false,
       message: 'Không thể xoá khách hàng.',
     });
+  }
+});
+
+/**
+ * PUT /api/customers/:id/khoi-phuc  (chỉ admin)
+ * Đưa một khách từ thùng rác trở lại danh sách.
+ */
+router.put('/:id/khoi-phuc', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .update({ deleted_at: null, deleted_by: null })
+      .eq('id', id)
+      .not('deleted_at', 'is', null)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      // Số điện thoại đó giờ đã thuộc về một khách khác đang hoạt động
+      if (error.code === '23505') {
+        return res.status(409).json({
+          success: false,
+          message:
+            'Không khôi phục được: số điện thoại này giờ đã thuộc về một khách hàng khác.',
+        });
+      }
+      throw error;
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy khách hàng trong thùng rác.',
+      });
+    }
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'sua',
+      doi_tuong: 'khach_hang',
+      doi_tuong_id: id,
+      mo_ta: `Khôi phục khách "${data.ten_khach_hang}" (${data.so_dien_thoai}) từ thùng rác`,
+    });
+
+    return res.json({ success: true, message: 'Đã khôi phục khách hàng.', data });
+  } catch (err) {
+    console.error('[customers/khoi-phuc]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể khôi phục khách hàng.' });
+  }
+});
+
+/**
+ * DELETE /api/customers/:id/vinh-vien  (chỉ admin)
+ * Xoá hẳn khỏi database, kèm toàn bộ lịch sử liên hệ.
+ *
+ * Chỉ xoá được khách ĐANG NẰM TRONG THÙNG RÁC. Bắt buộc đi qua hai bước
+ * để không thể xoá vĩnh viễn chỉ bằng một cú bấm nhầm.
+ */
+router.delete('/:id/vinh-vien', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
+    }
+
+    const { data: khach, error: loiTim } = await supabase
+      .from('customers')
+      .select('id, ten_khach_hang, so_dien_thoai, deleted_at')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (loiTim) throw loiTim;
+    if (!khach) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Không tìm thấy khách hàng.' });
+    }
+    if (!khach.deleted_at) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phải chuyển vào thùng rác trước khi xoá vĩnh viễn.',
+      });
+    }
+
+    // Đếm trước để ghi vào nhật ký mất bao nhiêu lịch sử
+    const { count: soLichSu } = await supabase
+      .from('contact_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', id);
+
+    const { error } = await supabase.from('customers').delete().eq('id', id);
+    if (error) throw error;
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'xoa',
+      doi_tuong: 'khach_hang',
+      doi_tuong_id: id,
+      mo_ta: `XOÁ VĨNH VIỄN khách "${khach.ten_khach_hang}" (${khach.so_dien_thoai}), mất ${soLichSu || 0} bản ghi lịch sử liên hệ`,
+    });
+
+    return res.json({ success: true, message: 'Đã xoá vĩnh viễn.' });
+  } catch (err) {
+    console.error('[customers/vinh-vien]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể xoá vĩnh viễn.' });
   }
 });
 
@@ -866,21 +1030,34 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
 
     // Tra một lượt xem số nào đã có trong hệ thống
     const dsSo = hopLe.map((h) => h.value.so_dien_thoai);
+    // Lấy cả khách đang nằm trong thùng rác: số điện thoại vẫn chiếm chỗ
+    // trong ràng buộc UNIQUE, không tra ra thì lệnh thêm mới sẽ đổ.
     const { data: daCo, error: traError } = await supabase
       .from('customers')
-      .select('id, so_dien_thoai')
+      .select('id, so_dien_thoai, deleted_at')
       .in('so_dien_thoai', dsSo);
 
     if (traError) throw traError;
 
-    const banDoCu = new Map((daCo || []).map((c) => [c.so_dien_thoai, c.id]));
+    const banDoCu = new Map((daCo || []).map((c) => [c.so_dien_thoai, c]));
 
     const themMoi = [];
     const capNhat = [];
+    const khoiPhuc = [];
     let boQua = 0;
 
     hopLe.forEach(({ value }) => {
-      const idCu = banDoCu.get(value.so_dien_thoai);
+      const cu = banDoCu.get(value.so_dien_thoai);
+      const idCu = cu?.id;
+
+      // Nằm trong thùng rác mà lại có trong file nhập nghĩa là khách này
+      // cần tồn tại. Khôi phục bất kể chế độ nào — nếu chỉ "bỏ qua" thì
+      // người dùng nhập xong không thấy khách đâu mà cũng không hiểu vì sao.
+      if (cu?.deleted_at) {
+        khoiPhuc.push({ id: idCu, value });
+        return;
+      }
+
       if (!idCu) {
         // Chỉ khách MỚI mới gán giá trị mặc định. Gán cho cả bản ghi cũ
         // sẽ biến khách VIP thành Thường chỉ vì file không có cột phân loại.
@@ -898,6 +1075,21 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
 
     if (themMoi.length) {
       const { error } = await supabase.from('customers').insert(themMoi);
+      if (error) throw error;
+    }
+
+    // Khôi phục khách trong thùng rác, kèm cập nhật thông tin từ file
+    for (const { id, value } of khoiPhuc) {
+      const { trang_thai, ...phanConLai } = value;
+      const capNhatThat = { deleted_at: null, deleted_by: null };
+      Object.entries(phanConLai).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && v !== '') capNhatThat[k] = v;
+      });
+
+      const { error } = await supabase
+        .from('customers')
+        .update(capNhatThat)
+        .eq('id', id);
       if (error) throw error;
     }
 
@@ -929,7 +1121,7 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
     ghiNhatKy(req.user, {
       hanh_dong: 'tao',
       doi_tuong: 'khach_hang',
-      mo_ta: `Nhập từ file: thêm ${themMoi.length}, cập nhật ${capNhat.length}, bỏ qua ${boQua}, lỗi ${loi.length}`,
+      mo_ta: `Nhập từ file: thêm ${themMoi.length}, cập nhật ${capNhat.length}, khôi phục ${khoiPhuc.length}, bỏ qua ${boQua}, lỗi ${loi.length}`,
     });
 
     return res.json({
@@ -938,6 +1130,7 @@ router.post('/import', authMiddleware, requireAdmin, async (req, res) => {
       ket_qua: {
         them_moi: themMoi.length,
         cap_nhat: capNhat.length,
+        khoi_phuc: khoiPhuc.length,
         bo_qua: boQua,
         loi,
       },

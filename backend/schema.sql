@@ -185,3 +185,23 @@ CREATE INDEX IF NOT EXISTS idx_customers_phu_trach
 CREATE INDEX IF NOT EXISTS idx_customers_chua_giao
   ON public.customers (created_at DESC)
   WHERE phu_trach_id IS NULL;
+
+-- ==================================================================
+-- 12. Xoá mềm khách hàng
+-- ==================================================================
+-- Xoá khách trước đây là xoá thật, mà contact_history có ON DELETE CASCADE
+-- nên toàn bộ lịch sử chăm sóc bị xoá theo, không khôi phục được. Một cú
+-- bấm nhầm là mất công sức nhiều tháng.
+--
+-- Từ giờ xoá chỉ đánh dấu deleted_at; dữ liệu và lịch sử vẫn nguyên vẹn,
+-- admin khôi phục lại được. Xoá vĩnh viễn là thao tác riêng, chỉ gọi được
+-- từ thùng rác.
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+-- Chụp lại tên người xoá, để nhìn thùng rác là biết ai đã xoá
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS deleted_by TEXT;
+
+-- Index một phần: chỉ đánh index các dòng CHƯA xoá, vì mọi truy vấn thường
+-- ngày đều lọc deleted_at IS NULL.
+CREATE INDEX IF NOT EXISTS idx_customers_chua_xoa
+  ON public.customers (created_at DESC)
+  WHERE deleted_at IS NULL;

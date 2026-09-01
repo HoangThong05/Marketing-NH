@@ -40,6 +40,7 @@ function xepBac(trieu) {
  *   ">50tr"                -> Trên 50 triệu
  *   "15 triệu"             -> 10 - 20 triệu   (một số lẻ thì xếp theo bậc)
  *   "15000000"             -> 10 - 20 triệu   (ghi bằng đồng)
+ *   "1 tỷ"                 -> Trên 50 triệu   (đơn vị tỷ)
  *
  * @param {unknown} v
  * @returns {string|null} bậc chuẩn, hoặc null nếu không hiểu được
@@ -58,14 +59,24 @@ export function chuanHoaMucLuong(v) {
   const laDuoi = /(duoi|it hon|toi da|nho hon|<|max)/.test(chuoi);
   const laTren = /(tren|hon|tro len|lon hon|>|min)/.test(chuoi);
 
+  // Đơn vị tỷ: "1 tỷ", "1,5 tỉ", "2 tỷ đồng".
+  // Không có bước này thì "1 tỷ" bị đọc thành 1 triệu và xếp nhầm
+  // xuống bậc thấp nhất — sai lệch 1000 lần.
+  // Dùng lớp ký tự thay cho \b để tránh khớp nhầm "ty" nằm giữa một từ.
+  const laTy = /(^|[^a-z])(ty|ti)([^a-z]|$)/.test(chuoi);
+
   // Tách các con số. Dấu chấm là phân cách hàng nghìn kiểu Việt Nam,
   // dấu phẩy là phân cách thập phân.
   const soThoo = chuoi.replace(/\./g, '').replace(/,/g, '.');
   const cacSo = (soThoo.match(/\d+(?:\.\d+)?/g) || []).map(Number);
   if (cacSo.length === 0) return null;
 
-  // Ghi bằng đồng thay vì triệu thì quy đổi lại
-  const veTrieu = (n) => (n >= 1000 ? n / 1_000_000 : n);
+  /** Quy mọi cách ghi về đơn vị triệu đồng */
+  const veTrieu = (n) => {
+    if (laTy) return n * 1000;
+    // Số quá lớn thì chắc chắn đang ghi bằng đồng
+    return n >= 1000 ? n / 1000000 : n;
+  };
   const so = cacSo.map(veTrieu);
 
   // Hai con số = một khoảng. Lấy điểm giữa rồi xếp bậc, nhờ vậy cả những

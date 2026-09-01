@@ -139,7 +139,10 @@ export const customerAPI = {
   addContact: (id, payload) => api.post(`/customers/${id}/contacts`, payload),
   create: (payload) => api.post('/customers', payload),
   update: (id, payload) => api.put(`/customers/${id}`, payload),
+  // Xoá mềm: chuyển vào thùng rác, khôi phục lại được
   remove: (id) => api.delete(`/customers/${id}`),
+  khoiPhuc: (id) => api.put(`/customers/${id}/khoi-phuc`),
+  xoaVinhVien: (id) => api.delete(`/customers/${id}/vinh-vien`),
 };
 
 export const userAPI = {

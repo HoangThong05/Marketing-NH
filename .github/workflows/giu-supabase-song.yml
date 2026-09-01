@@ -1,0 +1,29 @@
+# Gọi API mỗi ngày để Supabase không tự tạm dừng.
+#
+# Supabase gói miễn phí tạm dừng project sau 7 ngày không có truy vấn nào.
+# Project bị dừng thì form đăng ký công khai cũng chết theo — khách điền
+# thông tin sẽ nhận lỗi, và phải vào dashboard bấm khôi phục thủ công.
+#
+# Phải gọi /api/health/db chứ không phải /api/health: cái sau chỉ trả lời
+# từ server, không đụng tới database nên không tính là hoạt động.
+
+name: Giữ Supabase hoạt động
+
+on:
+  schedule:
+    # 02:00 UTC hằng ngày = 09:00 giờ Việt Nam
+    - cron: '0 2 * * *'
+  # Cho phép bấm chạy tay từ tab Actions để kiểm tra
+  workflow_dispatch:
+
+jobs:
+  giu-song:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gọi database
+        run: |
+          echo "Gọi https://marketing-nh-api.vercel.app/api/health/db"
+          curl -sS --fail --max-time 30 \
+            https://marketing-nh-api.vercel.app/api/health/db
+          echo ""
+          echo "Database còn hoạt động."

@@ -214,6 +214,8 @@ export default function Admin() {
   const [danhBa, setDanhBa] = useState([]); // danh sách nhân viên để gán
   const [filterPhuTrach, setFilterPhuTrach] = useState(''); // '' | 'me' | 'none'
   const [dangGanId, setDangGanId] = useState(null); // id đang đổi phụ trách
+  const [xemThungRac, setXemThungRac] = useState(false); // đang xem thùng rác
+  const [dangKhoiPhucId, setDangKhoiPhucId] = useState(null);
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
   // Mặc định mở vào màn hình việc: đó là nơi bắt đầu ngày làm việc,
@@ -265,6 +267,7 @@ export default function Admin() {
     filterTrangThai,
     filterMucLuong,
     filterPhuTrach,
+    xemThungRac,
     chiHienDenHan,
     chiHienGoiY,
     tuNgay,
@@ -289,6 +292,7 @@ export default function Admin() {
       den_han: chiHienDenHan ? 1 : undefined,
       goi_y: chiHienGoiY ? 1 : undefined,
       phu_trach: filterPhuTrach || undefined,
+      da_xoa: xemThungRac ? 1 : undefined,
     }),
     [
       searchDebounced,
@@ -300,6 +304,7 @@ export default function Admin() {
       chiHienDenHan,
       chiHienGoiY,
       filterPhuTrach,
+      xemThungRac,
     ]
   );
 
@@ -483,6 +488,44 @@ export default function Admin() {
     setPage(1);
   };
 
+  /** Đưa một khách từ thùng rác trở lại danh sách */
+  const khoiPhuc = async (customer) => {
+    setDangKhoiPhucId(customer.id);
+    try {
+      await customerAPI.khoiPhuc(customer.id);
+      setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+      setTotal((t) => Math.max(t - 1, 0));
+      fetchStats();
+      toast.success(`Đã khôi phục "${customer.ten_khach_hang}".`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không khôi phục được.'));
+    } finally {
+      setDangKhoiPhucId(null);
+    }
+  };
+
+  /** Xoá hẳn khỏi database, mất luôn lịch sử liên hệ */
+  const xoaVinhVien = async (customer) => {
+    const xacNhan = window.confirm(
+      `XOÁ VĨNH VIỄN "${customer.ten_khach_hang}" (${customer.so_dien_thoai})?\n\n` +
+        'Toàn bộ lịch sử liên hệ của khách này sẽ mất hẳn.\n' +
+        'KHÔNG khôi phục lại được.'
+    );
+    if (!xacNhan) return;
+
+    setDangKhoiPhucId(customer.id);
+    try {
+      await customerAPI.xoaVinhVien(customer.id);
+      setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+      setTotal((t) => Math.max(t - 1, 0));
+      toast.success('Đã xoá vĩnh viễn.');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không xoá được.'));
+    } finally {
+      setDangKhoiPhucId(null);
+    }
+  };
+
   /**
    * Nâng một khách từ "Thường" lên "Tiềm năng" ngay tại bảng.
    * Chỉ là lối tắt cho thao tác vốn phải mở modal Sửa — hệ thống không bao
@@ -506,7 +549,8 @@ export default function Admin() {
   /* --- Xoá khách hàng --- */
   const handleDelete = async (customer) => {
     const xacNhan = window.confirm(
-      `Xoá khách hàng "${customer.ten_khach_hang}" (${customer.so_dien_thoai})?\nThao tác này không thể hoàn tác.`
+      `Chuyển khách "${customer.ten_khach_hang}" (${customer.so_dien_thoai}) vào thùng rác?\n\n` +
+        'Toàn bộ lịch sử liên hệ vẫn được giữ. Bạn khôi phục lại được bất cứ lúc nào.'
     );
     if (!xacNhan) return;
 
@@ -526,7 +570,7 @@ export default function Admin() {
         setPage((p) => p - 1);
       }
 
-      toast.success('Đã xoá khách hàng.');
+      toast.success('Đã chuyển vào thùng rác.');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể xoá khách hàng.'));
     } finally {
@@ -1163,6 +1207,24 @@ export default function Admin() {
                 {stats?.chua_giao ? ` (${stats.chua_giao})` : ''}
               </button>
 
+              {quanTri && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setXemThungRac((v) => !v);
+                    xoaBoLoc();
+                  }}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    xemThungRac
+                      ? 'bg-slate-700 text-white'
+                      : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
+                  }`}
+                  title="Khách đã xoá, còn khôi phục được"
+                >
+                  {xemThungRac ? 'Đang xem thùng rác' : 'Thùng rác'}
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setChiHienGoiY((v) => !v)}
@@ -1197,9 +1259,11 @@ export default function Admin() {
             ) : filtered.length === 0 ? (
               <div className="py-16 text-center">
                 <p className="text-sm font-medium text-slate-600">
-                  {coBoLoc
-                    ? 'Không tìm thấy khách hàng phù hợp.'
-                    : 'Chưa có khách hàng nào trong hệ thống.'}
+                  {xemThungRac
+                    ? 'Thùng rác trống.'
+                    : coBoLoc
+                      ? 'Không tìm thấy khách hàng phù hợp.'
+                      : 'Chưa có khách hàng nào trong hệ thống.'}
                 </p>
                 {coBoLoc && (
                   <button
@@ -1373,6 +1437,29 @@ export default function Admin() {
                           {formatDate(c.created_at)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
+                          {xemThungRac ? (
+                            dangKhoiPhucId === c.id ? (
+                              <Spinner size="sm" className="ml-auto text-ocb-green" />
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => khoiPhuc(c)}
+                                  className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
+                                >
+                                  Khôi phục
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => xoaVinhVien(c)}
+                                  className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                                >
+                                  Xoá vĩnh viễn
+                                </button>
+                              </>
+                            )
+                          ) : (
+                          <>
                           <button
                             type="button"
                             onClick={() => setContacting(c)}
@@ -1397,6 +1484,8 @@ export default function Admin() {
                             >
                               {deletingId === c.id ? 'Đang xoá...' : 'Xoá'}
                             </button>
+                          )}
+                          </>
                           )}
                         </td>
                       </tr>
