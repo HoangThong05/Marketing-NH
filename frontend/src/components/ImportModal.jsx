@@ -8,8 +8,9 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
 import { customerAPI, getErrorMessage } from '../services/api';
-import { PHAN_LOAI_LIST, MUC_LUONG_LIST } from '../constants';
+import { PHAN_LOAI_LIST } from '../constants';
 import { chuanHoaSoDienThoai } from '../utils/dienThoai';
+import { chuanHoaMucLuong } from '../utils/mucLuong';
 import Spinner from './Spinner';
 
 const PHONE_REGEX = /^(0|\+84)(3[2-9]|5[6-9]|7[0|6-9]|8[0-9]|9[0-9])[0-9]{7}$/;
@@ -155,9 +156,11 @@ export default function ImportModal({ open, onClose, onDone }) {
         const ngheNghiep = banDo.nghe_nghiep
           ? String(r[banDo.nghe_nghiep] ?? '').trim()
           : '';
-        const mucLuong = banDo.muc_luong
+        // Giữ cả bản gốc để báo lỗi cho dễ hiểu khi không quy đổi được
+        const mucLuongGoc = banDo.muc_luong
           ? String(r[banDo.muc_luong] ?? '').trim()
           : '';
+        const mucLuong = mucLuongGoc ? chuanHoaMucLuong(mucLuongGoc) : '';
 
         // Bỏ qua hẳn dòng rỗng hoàn toàn.
         // Excel thường giữ lại các dòng đã từng gõ rồi xoá trong vùng dữ liệu,
@@ -176,8 +179,8 @@ export default function ImportModal({ open, onClose, onDone }) {
         else if (ten.length < 2) loi = 'Tên quá ngắn';
         else if (loai && !PHAN_LOAI_LIST.includes(loai))
           loi = `Phân loại "${loai}" không hợp lệ`;
-        else if (mucLuong && !MUC_LUONG_LIST.includes(mucLuong))
-          loi = `Mức thu nhập "${mucLuong}" không hợp lệ`;
+        else if (mucLuongGoc && !mucLuong)
+          loi = `Không hiểu mức thu nhập "${mucLuongGoc}"`;
 
         // Chỉ gửi lên những trường file thực sự có dữ liệu.
         // Gửi cả ô trống thì chế độ Cập nhật sẽ xoá mất dữ liệu đang có

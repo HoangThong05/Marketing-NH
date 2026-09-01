@@ -7,6 +7,7 @@ import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
 import { taoRegexBoDau } from '../lib/tiengViet.js';
 import { chuanHoaSoDienThoai } from '../lib/dienThoai.js';
+import { chuanHoaMucLuong } from '../lib/mucLuong.js';
 import { laLoiVuotTrang, demTong, trangRong } from '../lib/phanTrang.js';
 import {
   PHAN_LOAI_HOP_LE,
@@ -161,11 +162,20 @@ function validateCustomer(body = {}, partial = false) {
 
   // --- Mức thu nhập ---
   if (body.muc_luong !== undefined) {
-    const ml = String(body.muc_luong || '').trim();
-    if (ml && !MUC_LUONG_HOP_LE.includes(ml)) {
-      errors.push(`Mức thu nhập phải là một trong: ${MUC_LUONG_HOP_LE.join(', ')}.`);
+    const thoo = String(body.muc_luong ?? '').trim();
+    if (!thoo) {
+      value.muc_luong = null;
     } else {
-      value.muc_luong = ml || null;
+      // Chấp nhận cách ghi tự do rồi quy về bậc chuẩn, thay vì bắt khớp
+      // từng ký tự. File Excel người dùng tự lập ghi đủ kiểu.
+      const ml = chuanHoaMucLuong(thoo);
+      if (!ml) {
+        errors.push(
+          `Không hiểu mức thu nhập "${thoo}". Dùng một trong: ${MUC_LUONG_HOP_LE.join(', ')}.`
+        );
+      } else {
+        value.muc_luong = ml;
+      }
     }
   }
 
