@@ -3,6 +3,7 @@ import express from 'express';
 
 import { supabase } from '../supabase.js';
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
+import { laLoiVuotTrang, demTong, trangRong } from '../lib/phanTrang.js';
 
 const router = express.Router();
 
@@ -10,6 +11,43 @@ router.use(authMiddleware, requireAdmin);
 
 const SO_DONG_MAC_DINH = 50;
 const SO_DONG_TOI_DA = 200;
+
+/**
+ * Gắn bộ lọc từ query string vào truy vấn.
+ * Tách riêng để phần lấy dữ liệu và phần đếm lại dùng chung một bộ lọc.
+ */
+function apDungBoLoc(query, q) {
+  // Lọc theo tên người thực hiện. Dùng username đã chụp lại lúc ghi
+  // chứ không phải user_id, để tài khoản đã xoá vẫn tra được.
+  const username = String(q.username || '').trim();
+  if (username) query = query.eq('username', username);
+
+  const doiTuong = String(q.doi_tuong || '').trim();
+  if (doiTuong) query = query.eq('doi_tuong', doiTuong);
+
+  const hanhDong = String(q.hanh_dong || '').trim();
+  if (hanhDong) query = query.eq('hanh_dong', hanhDong);
+
+  const tuNgay = String(q.tu_ngay || '').trim();
+  if (tuNgay) {
+    const d = new Date(tuNgay);
+    if (!Number.isNaN(d.getTime())) {
+      query = query.gte('created_at', d.toISOString());
+    }
+  }
+
+  const denNgay = String(q.den_ngay || '').trim();
+  if (denNgay) {
+    const d = new Date(denNgay);
+    if (!Number.isNaN(d.getTime())) {
+      // Tính hết cả ngày đó
+      d.setDate(d.getDate() + 1);
+      query = query.lt('created_at', d.toISOString());
+    }
+  }
+
+  return query;
+}
 
 /**
  * GET /api/activity  (chỉ admin)
@@ -32,47 +70,34 @@ router.get('/', async (req, res) => {
     const tu = (page - 1) * limit;
     const den = tu + limit - 1;
 
-    let query = supabase
-      .from('activity_log')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      // Chốt thêm thứ tự phụ theo id: nhiều thao tác có thể rơi vào cùng
-      // một mốc thời gian, không có tiêu chí phụ thì thứ tự giữa các trang
-      // có thể đảo, làm một dòng hiện hai lần hoặc biến mất.
-      .order('id', { ascending: false })
-      .range(tu, den);
-
-    // Lọc theo tên người thực hiện. Dùng username đã chụp lại lúc ghi
-    // chứ không phải user_id, để tài khoản đã xoá vẫn tra được.
-    const username = String(req.query.username || '').trim();
-    if (username) query = query.eq('username', username);
-
-    const doiTuong = String(req.query.doi_tuong || '').trim();
-    if (doiTuong) query = query.eq('doi_tuong', doiTuong);
-
-    const hanhDong = String(req.query.hanh_dong || '').trim();
-    if (hanhDong) query = query.eq('hanh_dong', hanhDong);
-
-    const tuNgay = String(req.query.tu_ngay || '').trim();
-    if (tuNgay) {
-      const d = new Date(tuNgay);
-      if (!Number.isNaN(d.getTime())) {
-        query = query.gte('created_at', d.toISOString());
-      }
-    }
-
-    const denNgay = String(req.query.den_ngay || '').trim();
-    if (denNgay) {
-      const d = new Date(denNgay);
-      if (!Number.isNaN(d.getTime())) {
-        // Tính hết cả ngày đó
-        d.setDate(d.getDate() + 1);
-        query = query.lt('created_at', d.toISOString());
-      }
-    }
+    let query = apDungBoLoc(
+      supabase
+        .from('activity_log')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        // Chốt thêm thứ tự phụ theo id: nhiều thao tác có thể rơi vào cùng
+        // một mốc thời gian, không có tiêu chí phụ thì thứ tự giữa các trang
+        // có thể đảo, làm một dòng hiện hai lần hoặc biến mất.
+        .order('id', { ascending: false })
+        .range(tu, den),
+      req.query
+    );
 
     const { data, count, error } = await query;
-    if (error) throw error;
+
+    if (error) {
+      // Xin trang vượt quá số bản ghi thì trả trang rỗng kèm tổng số đúng
+      if (laLoiVuotTrang(error)) {
+        const total = await demTong(() =>
+          apDungBoLoc(
+            supabase.from('activity_log').select('id', { count: 'exact', head: true }),
+            req.query
+          )
+        );
+        return res.json(trangRong(page, limit, total));
+      }
+      throw error;
+    }
 
     const total = count || 0;
     return res.json({

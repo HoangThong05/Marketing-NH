@@ -514,9 +514,18 @@ export default function Admin() {
     try {
       await customerAPI.remove(customer.id);
       // Cập nhật ngay trên giao diện, không cần tải lại cả danh sách
-      setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+      const conLai = customers.filter((c) => c.id !== customer.id);
+      setCustomers(conLai);
       setTotal((t) => Math.max(t - 1, 0));
       fetchStats();
+
+      // Xoá dòng cuối cùng của trang cuối thì trang đó không còn gì để hiện.
+      // Lùi về trang trước, nếu không người dùng nhìn thấy bảng trống kèm
+      // dòng chữ "Trang 3 / 2" mà không hiểu chuyện gì xảy ra.
+      if (conLai.length === 0 && page > 1) {
+        setPage((p) => p - 1);
+      }
+
       toast.success('Đã xoá khách hàng.');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể xoá khách hàng.'));

@@ -7,6 +7,7 @@ import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
 import { taoRegexBoDau } from '../lib/tiengViet.js';
 import { chuanHoaSoDienThoai } from '../lib/dienThoai.js';
+import { laLoiVuotTrang, demTong, trangRong } from '../lib/phanTrang.js';
 import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
@@ -342,7 +343,21 @@ router.get('/', authMiddleware, async (req, res) => {
     query = apDungBoLoc(query, { ...req.query, __userId: req.user.id });
 
     const { data, count, error } = await query;
-    if (error) throw error;
+
+    if (error) {
+      // Xin trang vượt quá số bản ghi thì trả trang rỗng kèm tổng số đúng,
+      // để giao diện tự biết mà lùi về trang hợp lệ.
+      if (laLoiVuotTrang(error)) {
+        const total = await demTong(() =>
+          apDungBoLoc(
+            supabase.from('customers').select('id', { count: 'exact', head: true }),
+            { ...req.query, __userId: req.user.id }
+          )
+        );
+        return res.json(trangRong(page, limit, total));
+      }
+      throw error;
+    }
 
     const total = count || 0;
     return res.json({
@@ -549,6 +564,20 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ success: false, message: 'ID không hợp lệ.' });
+    }
+
+    // Trạng thái chăm sóc KHÔNG sửa được qua đây.
+    //
+    // Nó chỉ được đổi qua POST /:id/contacts, để mỗi lần đổi đều kèm một
+    // dòng lịch sử ghi rõ ai đổi, lúc nào, kết quả trao đổi ra sao. Cho sửa
+    // thẳng ở đây thì nhìn lại hồ sơ sẽ thấy khách "Chốt" mà không có dấu
+    // vết nào của cuộc gọi nào — mất luôn giá trị đối chiếu của lịch sử.
+    if (req.body?.trang_thai !== undefined) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Trạng thái chăm sóc chỉ đổi được qua chức năng Chăm sóc, để luôn có lịch sử liên hệ đi kèm.',
+      });
     }
 
     const { errors, value } = validateCustomer(req.body, true);
