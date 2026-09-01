@@ -153,6 +153,8 @@ export const userAPI = {
 
 export const activityAPI = {
   getAll: (params) => api.get('/activity', { params }),
+  // Danh sách tên người từng thao tác, để đổ vào ô lọc
+  nguoiThucHien: () => api.get('/activity/nguoi-thuc-hien'),
 };
 
 /**
