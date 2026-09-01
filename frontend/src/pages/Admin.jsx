@@ -448,7 +448,6 @@ export default function Admin() {
     try {
       const { data } = await customerAPI.setPhuTrach(customer.id, phuTrachId);
       handleSaved(data.data);
-      fetchStats();
       toast.success(data.message);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể đổi người phụ trách.'));
@@ -562,7 +561,6 @@ export default function Admin() {
         phan_loai: 'Tiềm năng',
       });
       handleSaved(data.data);
-      fetchStats();
       toast.success(`Đã nâng "${customer.ten_khach_hang}" lên Tiềm năng.`);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể nâng hạng khách hàng.'));
@@ -581,8 +579,10 @@ export default function Admin() {
     setDeletingId(customer.id);
     try {
       await customerAPI.remove(customer.id);
-      // Cập nhật ngay trên giao diện, không cần gọi lại API
+      // Cập nhật ngay trên giao diện, không cần tải lại cả danh sách
       setCustomers((prev) => prev.filter((c) => c.id !== customer.id));
+      setTotal((t) => Math.max(t - 1, 0));
+      fetchStats();
       toast.success('Đã xoá khách hàng.');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể xoá khách hàng.'));
@@ -591,10 +591,21 @@ export default function Admin() {
     }
   };
 
-  /* --- Cập nhật danh sách sau khi modal lưu thành công --- */
+  /**
+   * Cập nhật danh sách sau khi một thao tác sửa đổi thành công.
+   *
+   * Luôn nạp lại số liệu thống kê: đổi trạng thái, đổi phân loại hay đổi
+   * thu nhập của một khách đều làm sai lệch 4 thẻ số và 2 biểu đồ. Trước
+   * đây chỉ cập nhật dòng trong bảng nên biểu đồ đứng im cho tới khi tải
+   * lại trang — người dùng thấy bảng và biểu đồ nói hai chuyện khác nhau.
+   */
   const handleSaved = (updated) => {
-    if (!updated) return fetchCustomers();
-    setCustomers((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    if (!updated) {
+      fetchCustomers();
+    } else {
+      setCustomers((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    }
+    fetchStats();
   };
 
   /* --- Xuất file Excel theo đúng danh sách đang hiển thị --- */
