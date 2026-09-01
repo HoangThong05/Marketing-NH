@@ -108,10 +108,9 @@ export default function ContactModal({ customer, onClose, onSaved }) {
 
       toast.success('Đã ghi nhận lần liên hệ.');
       onSaved(data.customer);
-
-      // Ở lại trong modal, chỉ nạp lại lịch sử để thấy ngay bản ghi vừa thêm
-      reset({ trang_thai: values.trang_thai, ket_qua: '', hen_goi_lai: '' });
-      fetchHistory(customer.id);
+      // Đóng luôn: ghi xong một lần liên hệ là xong việc với khách này,
+      // giữ modal mở chỉ khiến người dùng phải bấm đóng thêm một lần nữa.
+      onClose();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không ghi nhận được lần liên hệ.'));
     }
@@ -132,11 +131,15 @@ export default function ContactModal({ customer, onClose, onSaved }) {
         <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
           <div className="min-w-0">
             <h2 id="contact-modal-title" className="text-lg font-bold text-slate-800">
-              Chăm sóc khách hàng
+              {customer.ten_khach_hang}
             </h2>
-            <p className="mt-0.5 truncate text-sm text-slate-500">
-              {customer.ten_khach_hang} · {customer.so_dien_thoai}
-            </p>
+            <a
+              href={`tel:${customer.so_dien_thoai}`}
+              className="mt-0.5 inline-block text-sm font-medium tabular-nums text-ocb-green hover:underline"
+              title="Bấm để gọi"
+            >
+              {customer.so_dien_thoai}
+            </a>
           </div>
           <button
             type="button"
@@ -156,6 +159,37 @@ export default function ContactModal({ customer, onClose, onSaved }) {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {/* --- Thông tin khách, để chuẩn bị trước khi gọi --- */}
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+            <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              {[
+                ['Nghề nghiệp', customer.nghe_nghiep],
+                ['Thu nhập', customer.muc_luong],
+                ['Địa chỉ', customer.dia_chi],
+                ['Phân loại', customer.phan_loai],
+              ].map(([nhan, gia_tri]) => (
+                <div key={nhan} className="flex gap-2">
+                  <dt className="shrink-0 text-slate-500">{nhan}:</dt>
+                  <dd className="min-w-0 font-medium text-slate-800">
+                    {gia_tri || <span className="font-normal text-slate-400">—</span>}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            {/* Ghi chú hiện ĐẦY ĐỦ, không cắt.
+                Đây là lúc người dùng cần đọc nó nhất — ngay trước khi gọi.
+                Trong bảng thì ghi chú bị cắt vì không đủ chỗ. */}
+            {customer.ghi_chu && (
+              <div className="mt-3 rounded-lg bg-white p-3 ring-1 ring-slate-200">
+                <p className="text-xs font-medium text-slate-500">Ghi chú của khách</p>
+                <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-sm text-slate-700">
+                  {customer.ghi_chu}
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* --- Form ghi nhận lần liên hệ --- */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6" noValidate>
             <div className="grid gap-4 sm:grid-cols-2">
