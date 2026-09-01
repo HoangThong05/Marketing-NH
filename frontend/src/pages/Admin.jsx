@@ -26,6 +26,7 @@ import {
 } from '../services/api';
 import UserManagement from './UserManagement';
 import ActivityLog from './ActivityLog';
+import ViecHomNay from './ViecHomNay';
 import OcbLogo from '../components/OcbLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
@@ -46,6 +47,11 @@ import {
 
 // Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
 const MUC_MENU = [
+  {
+    key: 'viec',
+    nhan: 'Việc hôm nay',
+    icon: 'M9 2h6v2h4v18H5V4h4V2Zm0 4H7v14h10V6h-2v2H9V6Zm-.5 6.5 1.4-1.4 1.6 1.6 3.6-3.6 1.4 1.4-5 5-3-3Z',
+  },
   {
     key: 'khach',
     nhan: 'Quản lý khách hàng',
@@ -284,7 +290,9 @@ export default function Admin() {
   const [dangGanId, setDangGanId] = useState(null); // id đang đổi phụ trách
   const [chiHienDenHan, setChiHienDenHan] = useState(false); // chỉ khách đến hạn gọi
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
-  const [view, setView] = useState('khach'); // khach | taikhoan | nhatky
+  // Mặc định mở vào màn hình việc: đó là nơi bắt đầu ngày làm việc,
+  // còn bảng danh sách là nơi tra cứu khi cần.
+  const [view, setView] = useState('viec'); // viec | khach | taikhoan | nhatky
 
   // Phân trang, sắp xếp, lọc theo ngày — tất cả xử lý phía server
   const [page, setPage] = useState(1);
@@ -894,6 +902,7 @@ export default function Admin() {
           )}
         </header>
 
+        {view === 'viec' && <ViecHomNay />}
         {view === 'taikhoan' && quanTri && <UserManagement />}
         {view === 'nhatky' && quanTri && <ActivityLog />}
 

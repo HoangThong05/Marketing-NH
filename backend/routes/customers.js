@@ -278,6 +278,23 @@ function apDungBoLoc(query, q) {
     }
   }
 
+  // Lọc theo khoảng thời gian hẹn gọi lại.
+  // Mốc thời gian do trình duyệt gửi lên chứ không tự tính ở server —
+  // "hôm nay" phải theo múi giờ của người dùng, không phải của máy chủ.
+  const henTu = String(q.hen_tu || '').trim();
+  const henDen = String(q.hen_den || '').trim();
+  if (henTu || henDen) {
+    query = query.not('hen_goi_lai', 'is', null);
+    if (henTu) {
+      const d = new Date(henTu);
+      if (!Number.isNaN(d.getTime())) query = query.gte('hen_goi_lai', d.toISOString());
+    }
+    if (henDen) {
+      const d = new Date(henDen);
+      if (!Number.isNaN(d.getTime())) query = query.lte('hen_goi_lai', d.toISOString());
+    }
+  }
+
   // Chỉ lấy khách đã tới hạn hẹn gọi lại
   if (String(q.den_han || '') === '1') {
     query = query
