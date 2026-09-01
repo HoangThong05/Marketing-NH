@@ -983,7 +983,9 @@ export default function Admin() {
                   <BarChart
                     data={dulieuPheu}
                     layout="vertical"
-                    margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+                    // Chừa đủ chỗ bên phải cho nhãn số. 56px đủ cho số 5
+                    // chữ số; ít hơn thì tới mốc vài nghìn khách là nhãn bị cụt.
+                    margin={{ top: 4, right: 56, left: 8, bottom: 4 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
                     <XAxis
@@ -1039,7 +1041,9 @@ export default function Admin() {
                   <BarChart
                     data={dulieuThuNhap}
                     layout="vertical"
-                    margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+                    // Chừa đủ chỗ bên phải cho nhãn số. 56px đủ cho số 5
+                    // chữ số; ít hơn thì tới mốc vài nghìn khách là nhãn bị cụt.
+                    margin={{ top: 4, right: 56, left: 8, bottom: 4 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
                     <XAxis
