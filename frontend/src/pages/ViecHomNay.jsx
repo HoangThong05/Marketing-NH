@@ -297,6 +297,18 @@ export default function ViecHomNay() {
       order: 'asc',
     };
   }, [cuaAi]);
+  // Khách của mình chưa gọi lần nào. Đây là phần việc LỚN NHẤT của nhân
+  // viên lúc mới nhận danh sách, mà bản đầu tôi lại bỏ sót — màn hình báo
+  // "không có việc nào" trong khi mỗi người có hơn trăm khách phải gọi.
+  const tsChuaGoi = useCallback(
+    () => ({
+      phu_trach: cuaAi,
+      trang_thai: 'Mới',
+      sort: 'created_at',
+      order: 'desc',
+    }),
+    [cuaAi]
+  );
   const tsChuaGiao = useCallback(
     () => ({
       phu_trach: 'none',
@@ -309,6 +321,7 @@ export default function ViecHomNay() {
 
   const nhomQuaHan = useNhomViec(tsQuaHan);
   const nhomHomNay = useNhomViec(tsHomNay);
+  const nhomChuaGoi = useNhomViec(tsChuaGoi);
   const nhomChuaGiao = useNhomViec(tsChuaGiao);
 
   /** Nạp lại cả ba nhóm */
@@ -316,9 +329,10 @@ export default function ViecHomNay() {
     (silent = false) => {
       nhomQuaHan.tai(silent);
       nhomHomNay.tai(silent);
+      nhomChuaGoi.tai(silent);
       nhomChuaGiao.tai(silent);
     },
-    [nhomQuaHan, nhomHomNay, nhomChuaGiao]
+    [nhomQuaHan, nhomHomNay, nhomChuaGoi, nhomChuaGiao]
   );
 
   /** Nhận phụ trách một khách ngay từ màn hình này */
@@ -337,8 +351,9 @@ export default function ViecHomNay() {
     }
   };
 
-  const dangTai = nhomQuaHan.loading || nhomHomNay.loading;
-  const tongViec = nhomQuaHan.total + nhomHomNay.total;
+  const dangTai = nhomQuaHan.loading || nhomHomNay.loading || nhomChuaGoi.loading;
+  // Tính cả nhóm chưa gọi: đó mới là phần việc thật sự phải làm trong ngày
+  const tongViec = nhomQuaHan.total + nhomHomNay.total + nhomChuaGoi.total;
 
   const loiChao = useMemo(() => {
     const gio = new Date().getHours();
@@ -413,9 +428,21 @@ export default function ViecHomNay() {
       />
 
       <NhomViec
+        tieuDe="Khách chưa gọi lần nào"
+        moTa={
+          quanTri
+            ? 'Toàn hệ thống — đã có người phụ trách nhưng chưa ai liên hệ'
+            : 'Khách bạn phụ trách nhưng chưa liên hệ lần nào'
+        }
+        mau="#0284C7"
+        nhom={nhomChuaGoi}
+        onChamSoc={setContacting}
+      />
+
+      <NhomViec
         tieuDe="Khách mới chưa ai nhận"
         moTa="Vừa đăng ký qua form, chưa có người phụ trách"
-        mau="#0284C7"
+        mau="#7C3AED"
         nhom={nhomChuaGiao}
         onChamSoc={setContacting}
         onNhan={nhanKhach}
