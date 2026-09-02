@@ -124,6 +124,9 @@ export const authAPI = {
   login: (payload) => api.post('/auth/login', payload),
   register: (payload) => api.post('/auth/register', payload),
   changePassword: (payload) => api.put('/auth/password', payload),
+  // Hồ sơ của chính người đang đăng nhập
+  getProfile: () => api.get('/auth/toi'),
+  updateProfile: (payload) => api.put('/auth/toi', payload),
 };
 
 export const customerAPI = {

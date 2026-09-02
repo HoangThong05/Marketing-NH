@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../supabase.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { ghiNhatKy } from '../lib/activityLog.js';
 
 const router = express.Router();
 
@@ -231,6 +232,111 @@ router.put('/password', authMiddleware, async (req, res) => {
       success: false,
       message: 'Không thể đổi mật khẩu. Vui lòng thử lại.',
     });
+  }
+});
+
+/**
+ * GET /api/auth/toi  (cần đăng nhập)
+ * Hồ sơ của chính người đang đăng nhập.
+ *
+ * Lấy từ database chứ không đọc từ token: token được ký lúc đăng nhập nên
+ * không phản ánh thay đổi sau đó. Mở hồ sơ ra phải thấy dữ liệu hiện tại.
+ */
+router.get('/toi', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, ho_ten, role, created_at')
+      .eq('id', req.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Không tìm thấy tài khoản.' });
+    }
+
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('[auth/toi]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể tải hồ sơ.' });
+  }
+});
+
+/**
+ * PUT /api/auth/toi  (cần đăng nhập)
+ * Tự sửa hồ sơ của mình. Hiện chỉ đổi được họ tên hiển thị.
+ *
+ * Cố ý KHÔNG cho đổi:
+ *   - username : là định danh đăng nhập, đổi sẽ làm rối nhật ký cũ vì
+ *                nhật ký lưu tên tại thời điểm ghi
+ *   - role     : nâng quyền cho chính mình thì phân quyền thành vô nghĩa
+ *   - active   : tự mở khoá cho mình thì việc khoá tài khoản thành vô dụng
+ *
+ * Ba trường đó chỉ admin đổi được, qua /api/users.
+ */
+router.put('/toi', authMiddleware, async (req, res) => {
+  try {
+    if (req.body?.username !== undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không đổi được tên đăng nhập. Liên hệ quản trị viên nếu cần.',
+      });
+    }
+    if (req.body?.role !== undefined || req.body?.active !== undefined) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền tự đổi vai trò hoặc trạng thái tài khoản.',
+      });
+    }
+
+    if (req.body?.ho_ten === undefined) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Không có dữ liệu nào để cập nhật.' });
+    }
+
+    const hoTen = String(req.body.ho_ten || '').trim();
+    if (hoTen.length > 100) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Họ tên không được quá 100 ký tự.' });
+    }
+    if (hoTen && hoTen.length < 2) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Họ tên phải có ít nhất 2 ký tự.' });
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ ho_ten: hoTen || null })
+      .eq('id', req.user.id)
+      .select('id, username, ho_ten, role, created_at')
+      .single();
+
+    if (error) throw error;
+
+    ghiNhatKy(req.user, {
+      hanh_dong: 'sua',
+      doi_tuong: 'tai_khoan',
+      doi_tuong_id: req.user.id,
+      mo_ta: `Tự đổi họ tên hiển thị thành "${hoTen || '(để trống)'}"`,
+    });
+
+    return res.json({
+      success: true,
+      message: 'Đã cập nhật hồ sơ.',
+      data,
+    });
+  } catch (err) {
+    console.error('[auth/toi PUT]', err);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Không thể cập nhật hồ sơ.' });
   }
 });
 

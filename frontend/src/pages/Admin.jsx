@@ -32,6 +32,7 @@ import OcbLogo from '../components/OcbLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import ProfileModal from '../components/ProfileModal';
 import ContactModal from '../components/ContactModal';
 import ImportModal from '../components/ImportModal';
 import {
@@ -206,6 +207,11 @@ export default function Admin() {
   const [deletingId, setDeletingId] = useState(null); // id đang xoá
   const [sidebarOpen, setSidebarOpen] = useState(false); // menu trên mobile
   const [doiMatKhau, setDoiMatKhau] = useState(false); // modal đổi mật khẩu
+  const [xemHoSo, setXemHoSo] = useState(false); // modal hồ sơ cá nhân
+  // Tên hiển thị giữ trong state để đổi hồ sơ xong là sidebar đổi theo ngay
+  const [tenHienThi, setTenHienThi] = useState(
+    () => user?.ho_ten || user?.username || ''
+  );
   const [contacting, setContacting] = useState(null); // khách đang chăm sóc
   const [filterTrangThai, setFilterTrangThai] = useState(''); // lọc trạng thái
   const [filterMucLuong, setFilterMucLuong] = useState(''); // lọc mức thu nhập
@@ -739,12 +745,33 @@ export default function Admin() {
 
         {/* Thông tin tài khoản + đăng xuất */}
         <div className="border-t border-white/15 p-3">
-          <div className="mb-2 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setXemHoSo(true)}
+            className="mb-2 block w-full rounded-lg px-3 py-2 text-left transition hover:bg-white/10"
+            title="Xem và sửa hồ sơ của bạn"
+          >
             <p className="text-xs text-white/60">Đăng nhập với</p>
             <p className="truncate text-sm font-semibold text-white">
-              {user?.username || 'admin'}
+              {tenHienThi}
             </p>
-          </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setXemHoSo(true)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+              <path
+                d="M4 21c0-3.9 3.6-7 8-7s8 3.1 8 7"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+            Hồ sơ của tôi
+          </button>
           <button
             type="button"
             onClick={() => setDoiMatKhau(true)}
@@ -1530,6 +1557,13 @@ export default function Admin() {
         customer={contacting}
         onClose={() => setContacting(null)}
         onSaved={handleSaved}
+      />
+
+      {/* ============ Modal hồ sơ cá nhân ============ */}
+      <ProfileModal
+        open={xemHoSo}
+        onClose={() => setXemHoSo(false)}
+        onSaved={(hoSo) => setTenHienThi(hoSo.ho_ten || hoSo.username)}
       />
 
       {/* ============ Modal đổi mật khẩu ============ */}
