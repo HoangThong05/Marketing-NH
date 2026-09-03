@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 
 import { customerAPI, getErrorMessage } from '../services/api';
-import { TRANG_THAI_LIST, TRANG_THAI_BADGE } from '../constants';
+import { TRANG_THAI_LIST, TRANG_THAI_BADGE, TRANG_THAI_MO_TA } from '../constants';
 import Spinner from './Spinner';
 
 /** Định dạng ngày giờ đầy đủ theo kiểu Việt Nam */
@@ -202,9 +202,12 @@ export default function ContactModal({ customer, onClose, onSaved }) {
                   className="input-field"
                   {...register('trang_thai', { required: true })}
                 >
+                  {/* Kèm luôn mô tả trong từng dòng: lúc thả danh sách xuống
+                      là lúc người dùng phải phân biệt chúng với nhau, đợi
+                      chọn xong mới giải thích thì đã muộn. */}
                   {TRANG_THAI_LIST.filter((t) => t !== 'Mới').map((t) => (
                     <option key={t} value={t}>
-                      {t}
+                      {TRANG_THAI_MO_TA[t] ? `${t} — ${TRANG_THAI_MO_TA[t]}` : t}
                     </option>
                   ))}
                 </select>

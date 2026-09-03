@@ -6,9 +6,19 @@
 // Ở đây phân loại chỉ nói lên mức tiềm năng của một lead marketing.
 export const PHAN_LOAI_HOP_LE = ['Thường', 'Tiềm năng'];
 
-// Trạng thái chăm sóc, xếp theo tiến trình tự nhiên của một khách hàng
+// Trạng thái chăm sóc, xếp theo tiến trình tự nhiên của một khách hàng.
+//
+// "Không liên lạc được" tách riêng khỏi "Đã gọi": gọi mà khách không bắt máy
+// thì vẫn PHẢI gọi lại, còn "Đã gọi" là đã tư vấn xong. Gộp hai cái vào một
+// thì không lọc ra được nhóm cần gọi lần hai — mà lúc mới nhận danh sách thì
+// đó lại là nhóm đông nhất.
+//
+// Nó cũng khác "Từ chối": "Từ chối" là khách đã nghe tư vấn rồi mới không
+// quan tâm, tức là đóng hồ sơ. Xếp nhầm một khách chỉ vì đang bận không nghe
+// máy vào "Từ chối" là mất hẳn khách đó, không ai gọi lại nữa.
 export const TRANG_THAI_HOP_LE = [
   'Mới',
+  'Không liên lạc được',
   'Đã gọi',
   'Hẹn gọi lại',
   'Chốt',

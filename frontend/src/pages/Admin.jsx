@@ -978,7 +978,7 @@ export default function Admin() {
               </p>
 
               {/* Nằm ngang vì tên trạng thái dài, để dọc sẽ bị cắt chữ */}
-              <div className="mt-5 h-64 w-full">
+              <div className="mt-5 h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={dulieuPheu}
@@ -998,7 +998,9 @@ export default function Admin() {
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={88}
+                      // Đủ chỗ cho nhãn dài nhất ("Không liên lạc được").
+                      // Hẹp hơn thì Recharts cắt cụt chữ chứ không xuống dòng.
+                      width={128}
                       tick={{ fontSize: 12, fill: '#64748b' }}
                       tickLine={false}
                       axisLine={{ stroke: '#e2e8f0' }}

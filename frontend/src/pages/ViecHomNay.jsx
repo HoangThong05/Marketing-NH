@@ -309,6 +309,19 @@ export default function ViecHomNay() {
     }),
     [cuaAi]
   );
+  // Gọi rồi nhưng không gặp được khách. Nhóm này BẮT BUỘC phải có chỗ đứng
+  // riêng: khách vừa rời khỏi "chưa gọi lần nào" mà không hiện lại ở đâu nữa
+  // thì coi như biến mất khỏi màn hình làm việc, dù vẫn phải gọi lại.
+  // Xếp khách lâu chưa đụng tới lên trước.
+  const tsKhongLienLac = useCallback(
+    () => ({
+      phu_trach: cuaAi,
+      trang_thai: 'Không liên lạc được',
+      sort: 'created_at',
+      order: 'asc',
+    }),
+    [cuaAi]
+  );
   const tsChuaGiao = useCallback(
     () => ({
       phu_trach: 'none',
@@ -322,17 +335,19 @@ export default function ViecHomNay() {
   const nhomQuaHan = useNhomViec(tsQuaHan);
   const nhomHomNay = useNhomViec(tsHomNay);
   const nhomChuaGoi = useNhomViec(tsChuaGoi);
+  const nhomKhongLienLac = useNhomViec(tsKhongLienLac);
   const nhomChuaGiao = useNhomViec(tsChuaGiao);
 
-  /** Nạp lại cả ba nhóm */
+  /** Nạp lại toàn bộ các nhóm */
   const taiTatCa = useCallback(
     (silent = false) => {
       nhomQuaHan.tai(silent);
       nhomHomNay.tai(silent);
       nhomChuaGoi.tai(silent);
+      nhomKhongLienLac.tai(silent);
       nhomChuaGiao.tai(silent);
     },
-    [nhomQuaHan, nhomHomNay, nhomChuaGoi, nhomChuaGiao]
+    [nhomQuaHan, nhomHomNay, nhomChuaGoi, nhomKhongLienLac, nhomChuaGiao]
   );
 
   /** Nhận phụ trách một khách ngay từ màn hình này */
@@ -342,7 +357,7 @@ export default function ViecHomNay() {
       await customerAPI.setPhuTrach(customer.id, user?.id);
       toast.success(`Đã nhận "${customer.ten_khach_hang}".`);
       // Khách chuyển từ nhóm "chưa giao" sang phần việc của mình,
-      // nên phải nạp lại cả ba nhóm chứ không riêng nhóm đang đứng.
+      // nên phải nạp lại tất cả các nhóm chứ không riêng nhóm đang đứng.
       taiTatCa(true);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không nhận được khách.'));
@@ -351,9 +366,18 @@ export default function ViecHomNay() {
     }
   };
 
-  const dangTai = nhomQuaHan.loading || nhomHomNay.loading || nhomChuaGoi.loading;
-  // Tính cả nhóm chưa gọi: đó mới là phần việc thật sự phải làm trong ngày
-  const tongViec = nhomQuaHan.total + nhomHomNay.total + nhomChuaGoi.total;
+  const dangTai =
+    nhomQuaHan.loading ||
+    nhomHomNay.loading ||
+    nhomChuaGoi.loading ||
+    nhomKhongLienLac.loading;
+  // Đếm những gì đang là việc CỦA MÌNH. "Khách mới chưa ai nhận" đứng ngoài
+  // con số này vì chưa thuộc về ai — nhận rồi mới thành việc của mình.
+  const tongViec =
+    nhomQuaHan.total +
+    nhomHomNay.total +
+    nhomChuaGoi.total +
+    nhomKhongLienLac.total;
 
   const loiChao = useMemo(() => {
     const gio = new Date().getHours();
@@ -436,6 +460,18 @@ export default function ViecHomNay() {
         }
         mau="#0284C7"
         nhom={nhomChuaGoi}
+        onChamSoc={setContacting}
+      />
+
+      <NhomViec
+        tieuDe="Gọi rồi nhưng không gặp"
+        moTa={
+          quanTri
+            ? 'Toàn hệ thống — không bắt máy, cần gọi lại'
+            : 'Khách bạn đã gọi nhưng không bắt máy, cần gọi lại'
+        }
+        mau="#64748B"
+        nhom={nhomKhongLienLac}
         onChamSoc={setContacting}
       />
 

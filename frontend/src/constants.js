@@ -4,9 +4,11 @@
 // Bỏ hạng VIP — xem giải thích ở backend/constants.js
 export const PHAN_LOAI_LIST = ['Thường', 'Tiềm năng'];
 
-// Trạng thái chăm sóc, xếp theo tiến trình tự nhiên của một khách hàng
+// Trạng thái chăm sóc, xếp theo tiến trình tự nhiên của một khách hàng.
+// Xem giải thích vì sao tách "Không liên lạc được" ở backend/constants.js.
 export const TRANG_THAI_LIST = [
   'Mới',
+  'Không liên lạc được',
   'Đã gọi',
   'Hẹn gọi lại',
   'Chốt',
@@ -31,10 +33,24 @@ export const PHAN_LOAI_BADGE = {
 // nhờ độ đậm nhạt khác nhau, không chỉ dựa vào màu.
 export const TRANG_THAI_BADGE = {
   'Mới': 'bg-slate-100 text-slate-700 ring-slate-300',
+  'Không liên lạc được': 'bg-violet-50 text-violet-700 ring-violet-200',
   'Đã gọi': 'bg-sky-50 text-sky-700 ring-sky-600/20',
   'Hẹn gọi lại': 'bg-amber-50 text-amber-800 ring-amber-300',
   'Chốt': 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
   'Từ chối': 'bg-red-50 text-red-700 ring-red-200',
+};
+
+// Mô tả ngắn cho từng kết quả liên hệ, hiện ngay trong ô chọn ở màn hình
+// Chăm sóc. Chỉ mỗi cái tên thì rất dễ hiểu nhầm: "Từ chối" đã có người đọc
+// thành "khách từ chối cuộc gọi / không bắt máy", trong khi nó có nghĩa là
+// khách nghe tư vấn xong rồi mới không quan tâm. Nhầm hai cái đó là đóng hồ
+// sơ một khách chưa hề nói chuyện, vĩnh viễn không ai gọi lại nữa.
+export const TRANG_THAI_MO_TA = {
+  'Không liên lạc được': 'không bắt máy, máy bận, sai số — cần gọi lại',
+  'Đã gọi': 'đã nói chuyện được với khách',
+  'Hẹn gọi lại': 'khách hẹn dịp khác, phải đặt giờ',
+  'Chốt': 'khách đồng ý dùng sản phẩm',
+  'Từ chối': 'đã tư vấn xong, khách không quan tâm',
 };
 
 // Vai trò tài khoản. Giữ khớp với backend/constants.js.
@@ -128,6 +144,7 @@ export const nenNangHang = (c) =>
 // Bộ ba màu này đã kiểm tra đạt cả ngưỡng phân biệt cho người mù màu.
 export const TRANG_THAI_MAU = {
   'Mới': '#0284C7',
+  'Không liên lạc được': '#0284C7',
   'Đã gọi': '#0284C7',
   'Hẹn gọi lại': '#0284C7',
   'Chốt': '#00813D',
