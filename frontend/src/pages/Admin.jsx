@@ -27,6 +27,7 @@ import {
 import UserManagement from './UserManagement';
 import ActivityLog from './ActivityLog';
 import ViecHomNay from './ViecHomNay';
+import SoDienThoai from '../components/SoDienThoai';
 import BaoCaoNhanVien from './BaoCaoNhanVien';
 import PhanTrang from '../components/PhanTrang';
 import OcbLogo from '../components/OcbLogo';
@@ -46,6 +47,10 @@ import {
   TRANG_THAI_MAU,
   nenNangHang,
 } from '../constants';
+
+// Tiêu đề tab lúc không có việc gì quá hạn. Giữ khớp với thẻ <title>
+// trong frontend/index.html.
+const TIEU_DE_GOC = 'OCB - Quản lý khách hàng';
 
 // Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
 const MUC_MENU = [
@@ -420,20 +425,52 @@ export default function Admin() {
 
   // Tự động lấy dữ liệu mới mỗi 60 giây, để khách vừa đăng ký qua form
   // công khai xuất hiện mà không phải bấm Tải lại.
-  // Chỉ chạy khi tab đang được nhìn — tab ẩn thì dữ liệu mới cũng vô nghĩa,
-  // gọi API lúc đó chỉ tốn hạn mức.
   useEffect(() => {
+    let nhipAn = 0;
+
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchCustomers(true);
         fetchStats();
+        nhipAn = 0;
+        return;
+      }
+
+      // Tab đang ẩn. Danh sách khách thì đúng là không cần lấy — không ai
+      // nhìn. Nhưng số liệu thì vẫn phải, vì số việc quá hạn còn chạy ra
+      // TIÊU ĐỀ TAB, mà tiêu đề tab chính là thứ người dùng nhìn khi đang
+      // ở tab khác. Không cập nhật lúc ẩn thì con số đó đứng im đúng lúc
+      // nó cần chạy nhất.
+      //
+      // Năm phút một lần là đủ: đây là lời nhắc "có việc quá hạn", không
+      // phải đồng hồ đếm ngược.
+      nhipAn += 1;
+      if (nhipAn >= 5) {
+        nhipAn = 0;
+        fetchStats();
       }
     }, 60000);
+
     return () => clearInterval(id);
   }, [fetchCustomers, fetchStats]);
 
   /* --- Thống kê lấy từ server, tính trên toàn bộ hệ thống --- */
   const soDenHan = stats?.den_han ?? 0;
+
+  // Số việc quá hạn hiện ngay trên tiêu đề tab: "(2) OCB - Quản lý khách hàng".
+  //
+  // Cố ý KHÔNG dùng Notification API của trình duyệt. Nó phải xin quyền, mà
+  // người dùng lỡ bấm "Chặn" một lần là mất hẳn, không có cách nào xin lại
+  // trong app. Tiêu đề tab thì không xin phép ai, không tắt được, và đọc
+  // được ngay cả khi đang làm việc ở tab Excel bên cạnh.
+  useEffect(() => {
+    // Admin nhìn việc quá hạn của cả nhóm, nhân viên chỉ nhìn phần của mình
+    const soViec = quanTri ? soDenHan : (stats?.cua_toi_den_han ?? 0);
+    document.title = soViec > 0 ? `(${soViec}) ${TIEU_DE_GOC}` : TIEU_DE_GOC;
+    return () => {
+      document.title = TIEU_DE_GOC;
+    };
+  }, [quanTri, soDenHan, stats]);
 
   /* --- Phễu chăm sóc: luôn đủ 5 bậc theo đúng thứ tự tiến trình --- */
   const dulieuPheu = useMemo(
@@ -1327,8 +1364,11 @@ export default function Admin() {
                         <td className="px-4 py-3 tabular-nums text-slate-400">
                           {(page - 1) * limit + index + 1}
                         </td>
-                        <td className="px-4 py-3 font-medium tabular-nums text-slate-800">
-                          {c.so_dien_thoai}
+                        <td className="px-4 py-3">
+                          <SoDienThoai
+                            so={c.so_dien_thoai}
+                            className="font-medium text-slate-800"
+                          />
                         </td>
                         <td className="px-4 py-3 text-slate-800">{c.ten_khach_hang}</td>
                         <td className="whitespace-nowrap px-4 py-3">

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 import { customerAPI, getErrorMessage } from '../services/api';
 import { TRANG_THAI_LIST, TRANG_THAI_BADGE, TRANG_THAI_MO_TA } from '../constants';
+import { NutChep } from './SoDienThoai';
 import Spinner from './Spinner';
 
 /** Định dạng ngày giờ đầy đủ theo kiểu Việt Nam */
@@ -133,13 +134,18 @@ export default function ContactModal({ customer, onClose, onSaved }) {
             <h2 id="contact-modal-title" className="text-lg font-bold text-slate-800">
               {customer.ten_khach_hang}
             </h2>
-            <a
-              href={`tel:${customer.so_dien_thoai}`}
-              className="mt-0.5 inline-block text-sm font-medium tabular-nums text-ocb-green hover:underline"
-              title="Bấm để gọi"
-            >
-              {customer.so_dien_thoai}
-            </a>
+            {/* Bấm vào số là GỌI, nút bên cạnh mới là chép. Gộp hai việc
+                vào một chỗ bấm thì kiểu gì cũng có lần làm nhầm cái kia. */}
+            <div className="mt-0.5 flex items-center gap-1">
+              <a
+                href={`tel:${customer.so_dien_thoai}`}
+                className="text-sm font-medium tabular-nums text-ocb-green hover:underline"
+                title="Bấm để gọi"
+              >
+                {customer.so_dien_thoai}
+              </a>
+              <NutChep text={customer.so_dien_thoai} nhan="Chép số điện thoại" />
+            </div>
           </div>
           <button
             type="button"

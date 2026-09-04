@@ -205,3 +205,22 @@ ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS deleted_by TEXT;
 CREATE INDEX IF NOT EXISTS idx_customers_chua_xoa
   ON public.customers (created_at DESC)
   WHERE deleted_at IS NULL;
+
+-- ==================================================================
+-- 13. Chặn dò mật khẩu ở trang đăng nhập
+-- ==================================================================
+
+-- Mỗi lần đăng nhập SAI ghi một dòng. Đăng nhập đúng thì xoá sạch dòng của
+-- IP đó. Chỉ lưu HMAC-SHA256 của IP, không lưu IP gốc — giống submission_log.
+CREATE TABLE IF NOT EXISTS public.login_fail (
+  id SERIAL PRIMARY KEY,
+  ip_hash TEXT NOT NULL,
+  -- Tên đăng nhập đã thử, chỉ để nhìn nhật ký biết người ta đang dò cái gì
+  username TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_fail_ip_time
+  ON public.login_fail (ip_hash, created_at DESC);
+
+ALTER TABLE public.login_fail ENABLE ROW LEVEL SECURITY;

@@ -1,7 +1,6 @@
 // Route quản lý khách hàng.
 // POST là public (form khách tự điền), các thao tác còn lại yêu cầu đăng nhập.
 import express from 'express';
-import crypto from 'crypto';
 import { supabase } from '../supabase.js';
 import { authMiddleware, requireAdmin } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
@@ -9,6 +8,7 @@ import { taoRegexBoDau } from '../lib/tiengViet.js';
 import { chuanHoaSoDienThoai } from '../lib/dienThoai.js';
 import { chuanHoaMucLuong } from '../lib/mucLuong.js';
 import { laLoiVuotTrang, demTong, trangRong } from '../lib/phanTrang.js';
+import { bamIPTuRequest } from '../lib/ip.js';
 import {
   PHAN_LOAI_HOP_LE,
   TRANG_THAI_HOP_LE,
@@ -29,30 +29,6 @@ const GIOI_HAN_MOI_GIO = 5;
 const MOT_GIO_MS = 60 * 60 * 1000;
 
 /**
- * Lấy IP thật của người gửi.
- * Trên Vercel, request đi qua CDN nên IP gốc nằm ở header x-forwarded-for.
- */
-function layIP(req) {
-  const xff = req.headers['x-forwarded-for'];
-  if (typeof xff === 'string' && xff.trim()) {
-    // Header có thể là chuỗi nhiều IP, IP đầu tiên là của người dùng
-    return xff.split(',')[0].trim();
-  }
-  return req.ip || req.socket?.remoteAddress || 'unknown';
-}
-
-/**
- * Băm IP bằng HMAC-SHA256 để không lưu địa chỉ IP gốc vào database.
- * Dùng JWT_SECRET làm khoá băm nên không thể dò ngược ra IP.
- */
-function bamIP(ip) {
-  return crypto
-    .createHmac('sha256', process.env.JWT_SECRET || 'muoi-mac-dinh')
-    .update(ip)
-    .digest('hex');
-}
-
-/**
  * Đếm số lần IP này đã gửi thành công trong một giờ qua.
  *
  * Cố tình "fail-open": nếu truy vấn lỗi (mất mạng, chưa tạo bảng...) thì
@@ -62,7 +38,7 @@ function bamIP(ip) {
  * @returns {Promise<{ vuot: boolean, ipHash: string }>}
  */
 async function kiemTraGioiHan(req) {
-  const ipHash = bamIP(layIP(req));
+  const ipHash = bamIPTuRequest(req);
 
   try {
     const motGioTruoc = new Date(Date.now() - MOT_GIO_MS).toISOString();

@@ -13,6 +13,7 @@ import { customerAPI, userAPI, getUser, isAdmin, getErrorMessage } from '../serv
 import { MUC_LUONG_BADGE, TRANG_THAI_BADGE } from '../constants';
 import Spinner from '../components/Spinner';
 import ContactModal from '../components/ContactModal';
+import SoDienThoai from '../components/SoDienThoai';
 
 const SO_DONG_MOI_TRANG = 10;
 
@@ -205,9 +206,7 @@ function NhomViec({
                     <span className="font-medium text-slate-800">
                       {c.ten_khach_hang}
                     </span>
-                    <span className="tabular-nums text-sm text-slate-500">
-                      {c.so_dien_thoai}
-                    </span>
+                    <SoDienThoai so={c.so_dien_thoai} className="text-sm text-slate-500" />
                     {c.muc_luong && (
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${

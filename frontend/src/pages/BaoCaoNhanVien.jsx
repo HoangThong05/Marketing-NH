@@ -6,6 +6,7 @@
 // thành là dựng thanh, vì đó là thứ duy nhất cần so sánh bằng mắt.
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 import { customerAPI, getErrorMessage } from '../services/api';
 import { TRANG_THAI_LIST } from '../constants';
@@ -86,6 +87,7 @@ function O({ so, manh }) {
 export default function BaoCaoNhanVien() {
   const [duLieu, setDuLieu] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dangXuat, setDangXuat] = useState(false);
 
   const tai = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -155,6 +157,71 @@ export default function BaoCaoNhanVien() {
       (chua_giao?.trang_thai?.[t] || 0);
   });
 
+  /** Xuất đúng bảng đang xem ra Excel, không phải xuất lại từ server */
+  const xuatExcel = () => {
+    if (!duLieu?.nhan_vien?.length) {
+      toast.error('Chưa có số liệu để xuất.');
+      return;
+    }
+
+    setDangXuat(true);
+    try {
+      const dong = (ten, u) => {
+        const o = {
+          'Nhân viên': ten,
+          'Được giao': u.duoc_giao,
+          'Đã liên hệ': u.da_lien_he,
+          // Ghi sẵn tỉ lệ thành số để trong Excel còn lọc và sắp xếp được,
+          // chứ để dạng chữ "23%" thì cột đó thành vô dụng.
+          'Tiến độ (%)':
+            u.duoc_giao > 0 ? Math.round((u.da_lien_he / u.duoc_giao) * 100) : 0,
+          'Chưa gọi': u.trang_thai?.['Mới'] || 0,
+        };
+        COT_TRANG_THAI.forEach((t) => {
+          o[t] = u.trang_thai?.[t] || 0;
+        });
+        o['Lượt gọi hôm nay'] = u.goi_hom_nay ?? '';
+        o['Lượt gọi 7 ngày'] = u.goi_7_ngay ?? '';
+        return o;
+      };
+
+      const rows = duLieu.nhan_vien.map((u) => dong(tenHienThi(u), u));
+      if (duLieu.chua_giao?.duoc_giao > 0) {
+        const o = dong('(Chưa giao cho ai)', duLieu.chua_giao);
+        // Khách chưa giao thì không gắn với ai, đếm lượt gọi ở đây là vô nghĩa
+        o['Lượt gọi hôm nay'] = '';
+        o['Lượt gọi 7 ngày'] = '';
+        rows.push(o);
+      }
+      rows.push({
+        ...dong('TỔNG CỘNG', { ...cong, goi_hom_nay: tong?.goi_hom_nay ?? 0, goi_7_ngay: tong?.goi_7_ngay ?? 0 }),
+      });
+
+      const sheet = XLSX.utils.json_to_sheet(rows);
+      sheet['!cols'] = [
+        { wch: 22 },
+        { wch: 11 },
+        { wch: 11 },
+        { wch: 12 },
+        { wch: 10 },
+        ...COT_TRANG_THAI.map(() => ({ wch: 20 })),
+        { wch: 17 },
+        { wch: 16 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheet, 'Bao cao nhan vien');
+
+      const ngay = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Bao-cao-nhan-vien-OCB-${ngay}.xlsx`);
+      toast.success('Đã xuất báo cáo ra Excel.');
+    } catch {
+      toast.error('Không xuất được báo cáo.');
+    } finally {
+      setDangXuat(false);
+    }
+  };
+
   return (
     <main className="space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -165,18 +232,38 @@ export default function BaoCaoNhanVien() {
           </p>
         </div>
 
-        <button type="button" onClick={() => tai()} className="btn-ghost !py-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Tải lại
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => tai()} className="btn-ghost !py-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Tải lại
+          </button>
+
+          <button
+            type="button"
+            onClick={xuatExcel}
+            disabled={dangXuat}
+            className="btn-orange !py-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Xuất Excel
+          </button>
+        </div>
       </div>
 
       {/* ---------- Bảng chính ---------- */}

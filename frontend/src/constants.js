@@ -72,6 +72,7 @@ export const HANH_DONG_NHAN = {
   xoa: 'Xoá',
   lien_he: 'Liên hệ',
   doi_mat_khau: 'Đổi mật khẩu',
+  dang_nhap_sai: 'Chặn đăng nhập',
 };
 
 export const HANH_DONG_BADGE = {
@@ -80,6 +81,9 @@ export const HANH_DONG_BADGE = {
   xoa: 'bg-red-50 text-red-700 ring-red-200',
   lien_he: 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
   doi_mat_khau: 'bg-amber-50 text-amber-800 ring-amber-300',
+  // Đỏ đậm hơn cả 'xoá': đây là dấu hiệu có người ngoài đang dò mật khẩu,
+  // lướt qua nhật ký phải đập vào mắt ngay chứ không được lẫn vào đám còn lại.
+  dang_nhap_sai: 'bg-red-100 text-red-800 ring-red-300',
 };
 
 export const DOI_TUONG_NHAN = {

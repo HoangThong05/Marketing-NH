@@ -5,11 +5,26 @@ import jwt from 'jsonwebtoken';
 import { supabase } from '../supabase.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 import { ghiNhatKy } from '../lib/activityLog.js';
+import {
+  kiemTraChan,
+  ghiLanSai,
+  xoaLanSai,
+  SO_LAN_SAI_TOI_DA,
+  CUA_SO_PHUT,
+} from '../lib/chanDangNhap.js';
 
 const router = express.Router();
 
 // Thời hạn của token đăng nhập
 const TOKEN_EXPIRES_IN = '8h';
+
+// Mã băm giả để so khi KHÔNG tìm thấy tài khoản.
+//
+// Không có nó thì tên đăng nhập sai trả lời tức thì, còn tên đúng phải chờ
+// bcrypt so mật khẩu (cả trăm mili giây). Chênh lệch đó đủ để người ngoài dò
+// ra tài khoản nào có thật rồi mới dồn sức đoán mật khẩu. So với mã băm giả
+// khiến hai trường hợp mất thời gian như nhau.
+const BAM_GIA = '$2a$10$abcdefghijklmnopqrstuv0123456789012345678901234567890';
 
 /**
  * Sinh JWT từ bản ghi user trong database.
@@ -109,6 +124,18 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Chặn dò mật khẩu TRƯỚC khi đụng tới database tài khoản: đang bị chặn
+    // thì không cần biết tên đăng nhập có thật hay không.
+    const { chan, soLanSai, ipHash } = await kiemTraChan(req);
+    if (chan) {
+      return res.status(429).json({
+        success: false,
+        message:
+          `Bạn đã nhập sai quá ${SO_LAN_SAI_TOI_DA} lần. ` +
+          `Vui lòng thử lại sau ${CUA_SO_PHUT} phút.`,
+      });
+    }
+
     // maybeSingle() trả về null thay vì lỗi khi không tìm thấy user
     const { data: user, error } = await supabase
       .from('users')
@@ -125,10 +152,30 @@ router.post('/login', async (req, res) => {
       message: 'Tên đăng nhập hoặc mật khẩu không đúng.',
     };
 
-    if (!user) return res.status(401).json(invalid);
+    const matched = user
+      ? await bcrypt.compare(password, user.password_hash)
+      : // So với mã băm giả để tốn đúng chừng ấy thời gian, xem giải thích
+        // ở BAM_GIA. Kết quả luôn là false.
+        await bcrypt.compare(password, BAM_GIA).catch(() => false);
 
-    const matched = await bcrypt.compare(password, user.password_hash);
-    if (!matched) return res.status(401).json(invalid);
+    if (!user || !matched) {
+      ghiLanSai(ipHash, username);
+
+      // Đúng lần chạm ngưỡng thì ghi một dòng nhật ký để admin nhìn thấy có
+      // người đang dò. Chỉ ghi đúng một lần chứ không ghi mọi lần sai sau đó,
+      // nếu không một script chạy cả đêm sẽ nhấn chìm toàn bộ nhật ký.
+      if (soLanSai === SO_LAN_SAI_TOI_DA - 1) {
+        ghiNhatKy(null, {
+          hanh_dong: 'dang_nhap_sai',
+          doi_tuong: 'tai_khoan',
+          mo_ta:
+            `Chặn một địa chỉ IP sau ${SO_LAN_SAI_TOI_DA} lần đăng nhập sai ` +
+            `(tên đăng nhập thử gần nhất: "${username}")`,
+        });
+      }
+
+      return res.status(401).json(invalid);
+    }
 
     // Tài khoản bị khoá (nhân viên nghỉ việc) thì không cho vào nữa.
     // Kiểm tra SAU khi đã đối chiếu mật khẩu, để người ngoài không dò được
@@ -139,6 +186,9 @@ router.post('/login', async (req, res) => {
         message: 'Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên.',
       });
     }
+
+    // Vào được rồi thì xoá lịch sử sai của IP này, xem giải thích ở xoaLanSai
+    xoaLanSai(ipHash);
 
     return res.json({
       success: true,
