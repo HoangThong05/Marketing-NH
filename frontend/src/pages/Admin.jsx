@@ -1103,11 +1103,11 @@ export default function Admin() {
           >
             {/* Hàng công cụ tìm kiếm / lọc */}
             <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
-              {/* 300px là mức vừa đủ cho câu gợi ý, cộng 36px thụt trái cho
-                  biểu tượng kính lúp và nút xoá của ô type="search". Thấp hơn thì
-                  hàng chật chỗ là ô này co lại đầu tiên và câu gợi ý bị cắt cụt.
-                  Chật quá thì thanh lọc tự xuống dòng, vẫn đọc được. */}
-              <div className="relative min-w-[300px] flex-1">
+              {/* Bề rộng cố định, KHÔNG dùng flex-1: flex-1 sẽ nuốt hết chỗ
+                  trống còn lại của hàng, nên hễ hai ô ngày xuống dòng là ô này
+                  phình ra chiếm chỗ của chúng. 320px là vừa đủ câu gợi ý, cộng
+                  36px thụt trái cho kính lúp và nút xoá của ô type="search". */}
+              <div className="relative w-full sm:w-[320px] sm:shrink-0">
                 <svg
                   width="16"
                   height="16"
