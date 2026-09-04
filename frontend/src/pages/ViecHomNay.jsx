@@ -6,7 +6,7 @@
 // Mỗi nhóm phân trang RIÊNG: chuyển trang ở nhóm này không tải lại hai nhóm
 // kia. Mỗi trang chỉ 10 dòng — đây là danh sách để làm việc, không phải để
 // tra cứu, nên nhìn được hết trong một màn hình quan trọng hơn là thấy nhiều.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 import { customerAPI, userAPI, getUser, isAdmin, getErrorMessage } from '../services/api';
@@ -419,6 +419,35 @@ export default function ViecHomNay() {
     },
     [nhomQuaHan, nhomHomNay, nhomChuaGoi, nhomKhongLienLac, nhomChuaGiao]
   );
+
+  // Tự làm mới. Nhân viên mở màn hình này suốt buổi: gọi xong một khách,
+  // chuyển qua Zalo rồi quay lại tab thì phải thấy danh sách đã trừ người
+  // đó ra, không phải nhớ bấm Tải lại.
+  //
+  // Giữ hàm trong ref vì taiTatCa đổi định danh sau MỖI lần render (nó phụ
+  // thuộc năm đối tượng nhóm, mà mỗi nhóm trả về đối tượng mới mỗi render).
+  // Để nó thẳng vào mảng phụ thuộc thì bộ đếm bị dựng lại liên tục và mốc
+  // hai phút không bao giờ tới.
+  const taiRef = useRef(taiTatCa);
+  taiRef.current = taiTatCa;
+
+  useEffect(() => {
+    const lamMoi = () => {
+      // Tab đang ẩn thì dữ liệu mới cũng không ai nhìn, gọi API chỉ tốn
+      if (document.visibilityState === 'visible') taiRef.current(true);
+    };
+
+    // Hai phút chứ không phải 60 giây như màn Quản lý khách hàng: mỗi lần
+    // làm mới ở đây là NĂM lượt gọi API, một cho mỗi nhóm. Mà lịch hẹn thì
+    // tính theo giờ, làm mới dày hơn cũng không thấy gì mới.
+    const id = setInterval(lamMoi, 120000);
+    document.addEventListener('visibilitychange', lamMoi);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', lamMoi);
+    };
+  }, []);
 
   /** Nhận phụ trách một khách ngay từ màn hình này */
   const nhanKhach = async (customer) => {

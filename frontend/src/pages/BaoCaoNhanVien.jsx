@@ -105,6 +105,21 @@ export default function BaoCaoNhanVien() {
     tai();
   }, [tai]);
 
+  // Tự làm mới, thưa hơn Việc hôm nay nhiều. Đây là màn hình theo dõi, mở ra
+  // để ngó tiến độ chứ không phải để thao tác; mà mỗi lần gọi lại phải quét
+  // toàn bộ bảng khách hàng nên không đáng chạy dày.
+  useEffect(() => {
+    const lamMoi = () => {
+      if (document.visibilityState === 'visible') tai(true);
+    };
+    const id = setInterval(lamMoi, 300000);
+    document.addEventListener('visibilitychange', lamMoi);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', lamMoi);
+    };
+  }, [tai]);
+
   if (loading) {
     return (
       <main className="flex items-center gap-2 p-6 text-sm text-slate-500">
