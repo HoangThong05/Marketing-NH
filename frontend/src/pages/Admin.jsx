@@ -472,6 +472,26 @@ export default function Admin() {
     };
   }, [quanTri, soDenHan, stats]);
 
+  // Hẹn giờ làm mới ĐÚNG vào lúc lịch gần nhất tới hạn.
+  //
+  // Chỉ dựa vào vòng lặp 60 giây thì con số trên tiêu đề tab trễ tới gần một
+  // phút so với giờ hẹn — với một cái để nhắc "đã tới giờ gọi" thì trễ chừng
+  // đó là hỏng ý nghĩa. Cách này không thêm một lượt gọi API nào: vẫn đúng
+  // một lần, chỉ là gọi đúng lúc thay vì gọi mò.
+  useEffect(() => {
+    const moc = quanTri ? stats?.hen_ke_tiep : stats?.cua_toi_hen_ke_tiep;
+    if (!moc) return undefined;
+
+    const cho = new Date(moc).getTime() - Date.now();
+    // Đã qua rồi thì vòng chạy này đã đếm; còn xa quá một giờ thì để vòng lặp
+    // 60 giây lo, không giữ một bộ đếm treo lơ lửng hàng tiếng đồng hồ.
+    if (cho <= 0 || cho > 60 * 60 * 1000) return undefined;
+
+    // Cộng thêm một giây cho chắc chắn đã qua mốc khi máy chủ so lại giờ
+    const id = setTimeout(fetchStats, cho + 1000);
+    return () => clearTimeout(id);
+  }, [quanTri, stats, fetchStats]);
+
   /* --- Phễu chăm sóc: luôn đủ 5 bậc theo đúng thứ tự tiến trình --- */
   const dulieuPheu = useMemo(
     () =>

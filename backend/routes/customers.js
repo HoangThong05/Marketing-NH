@@ -418,18 +418,37 @@ router.get('/stats', authMiddleware, async (req, res) => {
     let cuaToi = 0;
     let cuaToiDenHan = 0;
 
+    // Mốc hẹn gần nhất còn Ở PHÍA TRƯỚC.
+    //
+    // Trình duyệt dùng nó để hẹn giờ làm mới đúng vào lúc lịch đó tới hạn,
+    // thay vì hỏi lại mỗi 60 giây rồi vẫn trễ tới gần một phút. Tính ở đây
+    // không tốn gì: vòng lặp này vốn đã đọc qua cột hen_goi_lai của mọi dòng.
+    let henKeTiep = null;
+    let cuaToiHenKeTiep = null;
+
     rows.forEach((r) => {
+      const cuaToiDay = r.phu_trach_id === req.user.id;
+
       if (r.phu_trach_id === null || r.phu_trach_id === undefined) chuaGiao += 1;
-      if (r.phu_trach_id === req.user.id) {
-        cuaToi += 1;
-        if (r.hen_goi_lai && new Date(r.hen_goi_lai).getTime() <= bayGio) {
-          cuaToiDenHan += 1;
-        }
-      }
+      if (cuaToiDay) cuaToi += 1;
+
       if (phan_loai[r.phan_loai] !== undefined) phan_loai[r.phan_loai] += 1;
       if (trang_thai[r.trang_thai] !== undefined) trang_thai[r.trang_thai] += 1;
       if (muc_luong[r.muc_luong] !== undefined) muc_luong[r.muc_luong] += 1;
-      if (r.hen_goi_lai && new Date(r.hen_goi_lai).getTime() <= bayGio) denHan += 1;
+
+      if (!r.hen_goi_lai) return;
+      const moc = new Date(r.hen_goi_lai).getTime();
+      if (Number.isNaN(moc)) return;
+
+      if (moc <= bayGio) {
+        denHan += 1;
+        if (cuaToiDay) cuaToiDenHan += 1;
+      } else {
+        if (henKeTiep === null || moc < henKeTiep) henKeTiep = moc;
+        if (cuaToiDay && (cuaToiHenKeTiep === null || moc < cuaToiHenKeTiep)) {
+          cuaToiHenKeTiep = moc;
+        }
+      }
     });
 
     return res.json({
@@ -440,6 +459,10 @@ router.get('/stats', authMiddleware, async (req, res) => {
         chua_giao: chuaGiao,
         cua_toi: cuaToi,
         cua_toi_den_han: cuaToiDenHan,
+        hen_ke_tiep: henKeTiep ? new Date(henKeTiep).toISOString() : null,
+        cua_toi_hen_ke_tiep: cuaToiHenKeTiep
+          ? new Date(cuaToiHenKeTiep).toISOString()
+          : null,
         phan_loai,
         trang_thai,
         muc_luong,
