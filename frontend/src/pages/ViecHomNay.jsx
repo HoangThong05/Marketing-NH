@@ -157,13 +157,22 @@ function NhomViec({
   const { danhSach, total, totalPages, page, setPage, loading } = nhom;
 
   return (
-    <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+    // Vạch màu chạy dọc SUỐT chiều cao của thẻ, không chỉ ở phần đầu:
+    // một nhóm có tới mười dòng khách, cuộn qua vài dòng là mất dấu
+    // đang ở nhóm nào nếu vạch chỉ nằm trên đỉnh.
+    <section
+      className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200"
+      style={{ borderLeft: `4px solid ${mau}` }}
+    >
+      {/* Nền đầu thẻ pha 10% màu của chính nhóm đó. Trước đây đầu thẻ
+          trắng y hệt các dòng bên dưới, chỉ cách nhau một đường kẻ mảnh
+          nên trôi tuột đi giữa danh sách. */}
       <div
         className="flex items-center gap-3 border-b border-slate-200 px-5 py-4"
-        style={{ borderLeft: `4px solid ${mau}` }}
+        style={{ backgroundColor: `${mau}1A` }}
       >
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-slate-800">
+          <h2 className="text-[15px] font-bold text-slate-800">
             {tieuDe}
             <span
               className="ml-2 rounded-full px-2 py-0.5 text-xs font-bold text-white"
@@ -449,7 +458,7 @@ export default function ViecHomNay() {
   }, []);
 
   return (
-    <main className="space-y-5 p-4 sm:p-6">
+    <main className="space-y-6 p-4 sm:p-6">
       {/* Lời chào + tóm tắt */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
