@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 
-import { customerAPI, getUser, isAdmin, getErrorMessage } from '../services/api';
+import { customerAPI, userAPI, getUser, isAdmin, getErrorMessage } from '../services/api';
 import { MUC_LUONG_BADGE, TRANG_THAI_BADGE } from '../constants';
 import Spinner from '../components/Spinner';
 import ContactModal from '../components/ContactModal';
@@ -144,7 +144,16 @@ function ChuyenTrang({ page, totalPages, total, onPage }) {
 /* Một nhóm việc                                                       */
 /* ------------------------------------------------------------------ */
 
-function NhomViec({ tieuDe, moTa, mau, nhom, onChamSoc, onNhan, dangNhanId }) {
+function NhomViec({
+  tieuDe,
+  moTa,
+  mau,
+  nhom,
+  onChamSoc,
+  onNhan,
+  dangNhanId,
+  tenPhuTrach,
+}) {
   const { danhSach, total, totalPages, page, setPage, loading } = nhom;
 
   return (
@@ -227,6 +236,30 @@ function NhomViec({ tieuDe, moTa, mau, nhom, onChamSoc, onNhan, dangNhanId }) {
                       </span>
                     )}
                     {c.nghe_nghiep && <span>· {c.nghe_nghiep}</span>}
+                    {/* Chỉ hiện với admin: nhân viên nhìn thấy toàn khách của
+                        chính mình nên dòng nào cũng một cái tên, thành nhiễu.
+                        Admin nhìn việc cả nhóm thì đây là thứ phải biết ngay,
+                        không lẽ mở từng khách ra mới rõ của ai. */}
+                    {tenPhuTrach?.(c.phu_trach_id) && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        {tenPhuTrach(c.phu_trach_id)}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -275,6 +308,34 @@ export default function ViecHomNay() {
 
   const [contacting, setContacting] = useState(null);
   const [dangNhanId, setDangNhanId] = useState(null);
+  const [danhBa, setDanhBa] = useState([]);
+
+  // Danh bạ nhân viên, chỉ để tra tên từ phu_trach_id. Tải một lần vì danh
+  // sách tài khoản gần như không đổi, và chỉ tải khi là admin — nhân viên
+  // không dùng tới nên khỏi tốn thêm một lượt gọi mỗi lần mở màn hình.
+  useEffect(() => {
+    if (!quanTri) return;
+    userAPI
+      .danhBa()
+      .then(({ data }) => setDanhBa(data.data || []))
+      .catch((error) => {
+        // Mất danh bạ thì chỉ là không hiện được tên, không phải lỗi chặn
+        // việc — cứ để màn hình chạy tiếp, không quăng toast làm phiền.
+        if (error?.response?.status !== 401) {
+          console.error('Không tải được danh bạ nhân viên:', error);
+        }
+      });
+  }, [quanTri]);
+
+  /** Tên hiển thị của người phụ trách; null nếu chưa giao cho ai */
+  const tenPhuTrach = useCallback(
+    (id) => {
+      if (!id) return null;
+      const nv = danhBa.find((u) => u.id === id);
+      return nv ? nv.ho_ten || nv.username : `#${id}`;
+    },
+    [danhBa]
+  );
 
   // Admin nhìn việc của cả nhóm, nhân viên chỉ nhìn phần mình phụ trách
   const cuaAi = quanTri ? undefined : 'me';
@@ -437,6 +498,7 @@ export default function ViecHomNay() {
         mau="#DC2626"
         nhom={nhomQuaHan}
         onChamSoc={setContacting}
+        tenPhuTrach={quanTri ? tenPhuTrach : undefined}
       />
 
       <NhomViec
@@ -449,6 +511,7 @@ export default function ViecHomNay() {
         mau="#D97706"
         nhom={nhomHomNay}
         onChamSoc={setContacting}
+        tenPhuTrach={quanTri ? tenPhuTrach : undefined}
       />
 
       <NhomViec
@@ -461,6 +524,7 @@ export default function ViecHomNay() {
         mau="#0284C7"
         nhom={nhomChuaGoi}
         onChamSoc={setContacting}
+        tenPhuTrach={quanTri ? tenPhuTrach : undefined}
       />
 
       <NhomViec
@@ -473,6 +537,7 @@ export default function ViecHomNay() {
         mau="#64748B"
         nhom={nhomKhongLienLac}
         onChamSoc={setContacting}
+        tenPhuTrach={quanTri ? tenPhuTrach : undefined}
       />
 
       <NhomViec
