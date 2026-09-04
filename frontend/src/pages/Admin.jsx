@@ -1103,7 +1103,11 @@ export default function Admin() {
           >
             {/* Hàng công cụ tìm kiếm / lọc */}
             <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
-              <div className="relative min-w-[220px] flex-1">
+              {/* 300px là mức vừa đủ cho câu gợi ý, cộng 36px thụt trái cho
+                  biểu tượng kính lúp và nút xoá của ô type="search". Thấp hơn thì
+                  hàng chật chỗ là ô này co lại đầu tiên và câu gợi ý bị cắt cụt.
+                  Chật quá thì thanh lọc tự xuống dòng, vẫn đọc được. */}
+              <div className="relative min-w-[300px] flex-1">
                 <svg
                   width="16"
                   height="16"
@@ -1119,7 +1123,7 @@ export default function Admin() {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm theo tên hoặc số điện thoại..."
+                  placeholder="Tìm theo tên hoặc số điện thoại"
                   aria-label="Tìm kiếm khách hàng"
                   className="input-field pl-9"
                 />
