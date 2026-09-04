@@ -478,6 +478,150 @@ router.get('/stats', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/customers/bao-cao-nhan-vien  (chỉ admin)
+ * Bảng theo dõi tiến độ của từng nhân viên.
+ *
+ * Trả về hai loại số khác hẳn nhau, đừng lẫn:
+ *   - TÌNH TRẠNG DANH SÁCH (từ bảng customers): mỗi khách đếm đúng một lần,
+ *     theo trạng thái hiện tại. Trả lời "còn bao nhiêu chưa gọi".
+ *   - HOẠT ĐỘNG (từ bảng contact_history): mỗi LẦN liên hệ một dòng, gọi lại
+ *     một khách ba lần là ba dòng. Trả lời "hôm nay có ai làm việc không".
+ *
+ * Ba truy vấn chạy song song. Vẫn còn xa mốc từng gây treo hàm serverless
+ * (bản /stats cũ chạy mười câu một lượt), nhưng cố tình không tách thêm nữa.
+ */
+router.get(
+  '/bao-cao-nhan-vien',
+  authMiddleware,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const TRAN = 50000;
+      const MOT_NGAY = 24 * 60 * 60 * 1000;
+      const bayGio = Date.now();
+
+      // Mốc đầu ngày do TRÌNH DUYỆT gửi lên. Máy chủ Vercel chạy giờ UTC,
+      // mà nửa đêm ở Việt Nam là 17h UTC hôm trước — tự đoán "hôm nay" ở
+      // máy chủ thì mọi cuộc gọi trước 7h sáng đều bị tính sang hôm qua.
+      let dauNgay = new Date(String(req.query.hom_nay_tu || ''));
+      if (
+        Number.isNaN(dauNgay.getTime()) ||
+        dauNgay.getTime() > bayGio ||
+        bayGio - dauNgay.getTime() > 2 * MOT_NGAY
+      ) {
+        dauNgay = new Date();
+        dauNgay.setHours(0, 0, 0, 0);
+      }
+      const mocBayNgay = new Date(bayGio - 7 * MOT_NGAY);
+
+      const [rKhach, rLienHe, rNguoi] = await Promise.all([
+        supabase
+          .from('customers')
+          .select('phu_trach_id, trang_thai')
+          .is('deleted_at', null)
+          .limit(TRAN),
+        supabase
+          .from('contact_history')
+          .select('user_id, created_at')
+          .gte('created_at', mocBayNgay.toISOString())
+          .limit(TRAN),
+        supabase
+          .from('users')
+          .select('id, username, ho_ten, active')
+          .order('id'),
+      ]);
+
+      if (rKhach.error) throw rKhach.error;
+      if (rLienHe.error) throw rLienHe.error;
+      if (rNguoi.error) throw rNguoi.error;
+
+      /** Khung số liệu rỗng cho một người */
+      const khungRong = () => {
+        const trang_thai = {};
+        TRANG_THAI_HOP_LE.forEach((v) => {
+          trang_thai[v] = 0;
+        });
+        return {
+          duoc_giao: 0,
+          da_lien_he: 0,
+          trang_thai,
+          goi_hom_nay: 0,
+          goi_7_ngay: 0,
+        };
+      };
+
+      const theoId = new Map();
+      const chuaGiao = khungRong();
+
+      const lay = (id) => {
+        if (!theoId.has(id)) theoId.set(id, khungRong());
+        return theoId.get(id);
+      };
+
+      (rKhach.data || []).forEach((r) => {
+        const o = r.phu_trach_id ? lay(r.phu_trach_id) : chuaGiao;
+        o.duoc_giao += 1;
+        if (o.trang_thai[r.trang_thai] !== undefined) {
+          o.trang_thai[r.trang_thai] += 1;
+        }
+        // "Đã liên hệ" = đã đụng tới ít nhất một lần, tức là khác "Mới".
+        // Tính bằng phần bù thay vì cộng năm trạng thái kia, để sau này
+        // thêm trạng thái mới thì con số này vẫn tự đúng.
+        if (r.trang_thai !== 'Mới') o.da_lien_he += 1;
+      });
+
+      const mocDauNgay = dauNgay.getTime();
+      (rLienHe.data || []).forEach((r) => {
+        if (!r.user_id) return;
+        const o = lay(r.user_id);
+        o.goi_7_ngay += 1;
+        if (new Date(r.created_at).getTime() >= mocDauNgay) o.goi_hom_nay += 1;
+      });
+
+      // Người bị khoá vẫn hiện NẾU còn khách hoặc còn hoạt động trong tuần —
+      // khoá tài khoản không làm biến mất phần việc họ đang giữ.
+      const nhan_vien = (rNguoi.data || [])
+        .map((u) => {
+          const o = theoId.get(u.id) || khungRong();
+          theoId.delete(u.id);
+          return { id: u.id, username: u.username, ho_ten: u.ho_ten, active: u.active, ...o };
+        })
+        .filter((u) => u.active || u.duoc_giao > 0 || u.goi_7_ngay > 0);
+
+      // Còn sót id không khớp tài khoản nào (tài khoản đã bị xoá hẳn) thì
+      // vẫn phải hiện, nếu không tổng các dòng sẽ không bằng tổng hệ thống.
+      theoId.forEach((o, id) => {
+        if (o.duoc_giao > 0 || o.goi_7_ngay > 0) {
+          nhan_vien.push({ id, username: null, ho_ten: null, active: false, ...o });
+        }
+      });
+
+      nhan_vien.sort((a, b) => b.duoc_giao - a.duoc_giao || a.id - b.id);
+
+      return res.json({
+        success: true,
+        data: {
+          dau_ngay: dauNgay.toISOString(),
+          tu_ngay_7: mocBayNgay.toISOString(),
+          nhan_vien,
+          chua_giao: chuaGiao,
+          tong: {
+            khach: (rKhach.data || []).length,
+            goi_hom_nay: nhan_vien.reduce((t, u) => t + u.goi_hom_nay, 0),
+            goi_7_ngay: nhan_vien.reduce((t, u) => t + u.goi_7_ngay, 0),
+          },
+        },
+      });
+    } catch (err) {
+      console.error('[customers/bao-cao-nhan-vien]', err);
+      return res
+        .status(500)
+        .json({ success: false, message: 'Không thể tải báo cáo nhân viên.' });
+    }
+  }
+);
+
+/**
  * GET /api/customers/export  (cần đăng nhập)
  * Lấy toàn bộ dữ liệu khớp bộ lọc, KHÔNG phân trang, để xuất Excel.
  * Có phân trang rồi thì không thể xuất từ dữ liệu đang hiển thị nữa,

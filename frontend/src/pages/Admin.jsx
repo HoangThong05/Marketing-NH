@@ -27,6 +27,7 @@ import {
 import UserManagement from './UserManagement';
 import ActivityLog from './ActivityLog';
 import ViecHomNay from './ViecHomNay';
+import BaoCaoNhanVien from './BaoCaoNhanVien';
 import PhanTrang from '../components/PhanTrang';
 import OcbLogo from '../components/OcbLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
@@ -57,6 +58,12 @@ const MUC_MENU = [
     key: 'khach',
     nhan: 'Quản lý khách hàng',
     icon: 'M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-12h8V3h-8v6Z',
+  },
+  {
+    key: 'baocao',
+    nhan: 'Báo cáo nhân viên',
+    chiAdmin: true,
+    icon: 'M4 20h16v2H4v-2Zm2-2V9h3v9H6Zm5 0V4h3v14h-3Zm5 0v-6h3v6h-3Z',
   },
   {
     key: 'taikhoan',
@@ -883,6 +890,7 @@ export default function Admin() {
         </header>
 
         {view === 'viec' && <ViecHomNay />}
+        {view === 'baocao' && quanTri && <BaoCaoNhanVien />}
         {view === 'taikhoan' && quanTri && <UserManagement />}
         {view === 'nhatky' && quanTri && <ActivityLog />}
 

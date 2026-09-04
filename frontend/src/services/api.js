@@ -132,6 +132,15 @@ export const authAPI = {
 export const customerAPI = {
   getAll: (params) => api.get('/customers', { params }),
   getStats: () => api.get('/customers/stats'),
+  // Báo cáo theo nhân viên (chỉ admin). Gửi kèm mốc đầu ngày tính theo
+  // giờ MÁY NGƯỜI DÙNG, vì máy chủ Vercel chạy giờ UTC.
+  baoCaoNhanVien: () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return api.get('/customers/bao-cao-nhan-vien', {
+      params: { hom_nay_tu: d.toISOString() },
+    });
+  },
   // Lấy toàn bộ dữ liệu khớp bộ lọc (không phân trang) để xuất Excel
   exportAll: (params) => api.get('/customers/export', { params }),
   importRows: (payload) => api.post('/customers/import', payload),
