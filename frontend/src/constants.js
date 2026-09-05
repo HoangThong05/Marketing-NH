@@ -19,13 +19,13 @@ export const TRANG_THAI_LIST = [
 // nên khi lọc danh sách thì các cột biểu đồ còn lại vẫn giữ nguyên màu.
 export const PHAN_LOAI_MAU = {
   'Thường': '#0284C7',
-  'Tiềm năng': '#F47920',
+  'Tiềm năng': '#D8093C',
 };
 
 // Badge phân loại trong bảng
 export const PHAN_LOAI_BADGE = {
   'Thường': 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  'Tiềm năng': 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
+  'Tiềm năng': 'bg-vtb-red-light text-vtb-red-dark ring-vtb-red/30',
 };
 
 // Badge trạng thái chăm sóc.
@@ -36,7 +36,7 @@ export const TRANG_THAI_BADGE = {
   'Không liên lạc được': 'bg-violet-50 text-violet-700 ring-violet-200',
   'Đã gọi': 'bg-sky-50 text-sky-700 ring-sky-600/20',
   'Hẹn gọi lại': 'bg-amber-50 text-amber-800 ring-amber-300',
-  'Chốt': 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+  'Chốt': 'bg-vtb-blue-light text-vtb-blue-dark ring-vtb-blue/30',
   'Từ chối': 'bg-red-50 text-red-700 ring-red-200',
 };
 
@@ -61,7 +61,7 @@ export const VAI_TRO_NHAN = {
 };
 
 export const VAI_TRO_BADGE = {
-  admin: 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+  admin: 'bg-vtb-blue-light text-vtb-blue-dark ring-vtb-blue/30',
   nhan_vien: 'bg-sky-50 text-sky-700 ring-sky-600/20',
 };
 
@@ -76,10 +76,10 @@ export const HANH_DONG_NHAN = {
 };
 
 export const HANH_DONG_BADGE = {
-  tao: 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+  tao: 'bg-vtb-blue-light text-vtb-blue-dark ring-vtb-blue/30',
   sua: 'bg-sky-50 text-sky-700 ring-sky-600/20',
   xoa: 'bg-red-50 text-red-700 ring-red-200',
-  lien_he: 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
+  lien_he: 'bg-vtb-red-light text-vtb-red-dark ring-vtb-red/30',
   doi_mat_khau: 'bg-amber-50 text-amber-800 ring-amber-300',
   // Đỏ đậm hơn cả 'xoá': đây là dấu hiệu có người ngoài đang dò mật khẩu,
   // lướt qua nhật ký phải đập vào mắt ngay chứ không được lẫn vào đám còn lại.
@@ -121,8 +121,8 @@ export const MUC_LUONG_LIST = [
 export const MUC_LUONG_BADGE = {
   'Dưới 10 triệu': 'bg-slate-100 text-slate-700 ring-slate-300',
   '10 - 20 triệu': 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  '20 - 50 triệu': 'bg-ocb-orange-light text-ocb-orange-dark ring-ocb-orange/30',
-  'Trên 50 triệu': 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30',
+  '20 - 50 triệu': 'bg-vtb-red-light text-vtb-red-dark ring-vtb-red/30',
+  'Trên 50 triệu': 'bg-vtb-blue-light text-vtb-blue-dark ring-vtb-blue/30',
 };
 
 // Các bậc thu nhập đủ để gợi ý nâng khách lên "Tiềm năng".

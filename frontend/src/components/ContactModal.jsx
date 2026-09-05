@@ -139,7 +139,7 @@ export default function ContactModal({ customer, onClose, onSaved }) {
             <div className="mt-0.5 flex items-center gap-1">
               <a
                 href={`tel:${customer.so_dien_thoai}`}
-                className="text-sm font-medium tabular-nums text-ocb-green hover:underline"
+                className="text-sm font-medium tabular-nums text-vtb-blue hover:underline"
                 title="Bấm để gọi"
               >
                 {customer.so_dien_thoai}
@@ -288,7 +288,7 @@ export default function ContactModal({ customer, onClose, onSaved }) {
 
             {loadingHistory ? (
               <div className="flex items-center gap-2 py-6 text-sm text-slate-500">
-                <Spinner size="sm" className="text-ocb-green" />
+                <Spinner size="sm" className="text-vtb-blue" />
                 Đang tải...
               </div>
             ) : history.length === 0 ? (

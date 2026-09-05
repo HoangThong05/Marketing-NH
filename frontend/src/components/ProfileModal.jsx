@@ -354,7 +354,7 @@ export default function ProfileModal({ open, onClose, onSaved, onDoiMatKhauXong 
               aria-selected={tab === t.key}
               className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition ${
                 tab === t.key
-                  ? 'border-ocb-green text-ocb-green'
+                  ? 'border-vtb-blue text-vtb-blue'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -365,7 +365,7 @@ export default function ProfileModal({ open, onClose, onSaved, onDoiMatKhauXong 
 
         {dangTai ? (
           <div className="flex items-center gap-2 px-6 py-10 text-sm text-slate-500">
-            <Spinner size="sm" className="text-ocb-green" />
+            <Spinner size="sm" className="text-vtb-blue" />
             Đang tải hồ sơ...
           </div>
         ) : tab === 'thongtin' ? (

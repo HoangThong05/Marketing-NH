@@ -4,14 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Bộ màu thương hiệu OCB
-        ocb: {
-          green: '#00813D',       // Xanh lá chủ đạo
-          'green-dark': '#00622E',
-          'green-light': '#E6F2EC',
-          orange: '#F47920',      // Cam nhấn
-          'orange-dark': '#D4620F',
-          'orange-light': '#FEF0E5',
+        // Bộ màu thương hiệu VietinBank, lấy từ chính file logo.
+        //
+        // Xanh dương là màu chủ đạo: nút, sidebar, viền khi focus.
+        // Đỏ chỉ dùng điểm xuyết (logo, vạch gradient, badge nhỏ) chứ KHÔNG
+        // dùng cho nút hành động — trong app này đỏ đã mang nghĩa xoá và từ
+        // chối, để nút "Nhận khách" màu đỏ là mời người ta bấm nhầm.
+        vtb: {
+          blue: '#0B5EA8',
+          'blue-dark': '#08477E',
+          'blue-light': '#E7F0F9',
+          red: '#D8093C',
+          'red-dark': '#A80730',
+          'red-light': '#FCE8ED',
         },
       },
       fontFamily: {

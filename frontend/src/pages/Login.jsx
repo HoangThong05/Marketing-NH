@@ -12,7 +12,7 @@ import {
   takeLogoutReason,
   getErrorMessage,
 } from '../services/api';
-import OcbLogo from '../components/OcbLogo';
+import VietinBankLogo from '../components/VietinBankLogo';
 import PasswordInput from '../components/PasswordInput';
 import Spinner from '../components/Spinner';
 
@@ -71,15 +71,15 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-ocb-green to-ocb-green-dark px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-vtb-blue to-vtb-blue-dark px-4 py-10">
       <div className="w-full max-w-md">
         {/* Logo trên nền xanh */}
         <div className="mb-6 flex justify-center">
-          <OcbLogo size="lg" />
+          <VietinBankLogo size="lg" />
         </div>
 
         <div className="animate-fade-in-up overflow-hidden rounded-2xl bg-white shadow-2xl">
-          <div className="h-1.5 bg-gradient-to-r from-ocb-orange to-ocb-green" />
+          <div className="h-1.5 bg-gradient-to-r from-vtb-red to-vtb-blue" />
 
           <div className="p-7 sm:p-8">
             <h1 className="text-center text-xl font-bold text-slate-800 sm:text-2xl">

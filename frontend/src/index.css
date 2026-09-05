@@ -17,7 +17,7 @@
     @apply w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm
            text-slate-800 outline-none transition
            placeholder:text-slate-400
-           focus:border-ocb-green focus:ring-2 focus:ring-ocb-green/20;
+           focus:border-vtb-blue focus:ring-2 focus:ring-vtb-blue/20;
   }
 
   /* Trạng thái lỗi của ô nhập liệu */
@@ -42,13 +42,8 @@
   }
 
   .btn-primary {
-    @apply btn bg-ocb-green text-white hover:bg-ocb-green-dark
-           focus:ring-2 focus:ring-ocb-green/30;
-  }
-
-  .btn-orange {
-    @apply btn bg-ocb-orange text-white hover:bg-ocb-orange-dark
-           focus:ring-2 focus:ring-ocb-orange/30;
+    @apply btn bg-vtb-blue text-white hover:bg-vtb-blue-dark
+           focus:ring-2 focus:ring-vtb-blue/30;
   }
 
   .btn-ghost {

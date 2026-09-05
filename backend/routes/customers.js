@@ -666,7 +666,7 @@ router.post('/', async (req, res) => {
       return res.status(429).json({
         success: false,
         message:
-          'Bạn đã gửi quá nhiều lần. Vui lòng thử lại sau một giờ hoặc liên hệ trực tiếp nhân viên OCB.',
+          'Bạn đã gửi quá nhiều lần. Vui lòng thử lại sau một giờ hoặc liên hệ trực tiếp nhân viên VietinBank.',
       });
     }
 

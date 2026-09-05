@@ -70,7 +70,7 @@ export default function SoDienThoai({ so, className = '' }) {
       type="button"
       onClick={bam}
       title={daChep ? 'Đã chép' : 'Bấm để chép số'}
-      className="group inline-flex items-center gap-1 rounded transition hover:text-ocb-green focus:outline-none focus-visible:ring-2 focus-visible:ring-ocb-green/40"
+      className="group inline-flex items-center gap-1 rounded transition hover:text-vtb-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-vtb-blue/40"
     >
       <span className={`tabular-nums ${className}`}>{so}</span>
 
@@ -128,7 +128,7 @@ export function NutChep({ text, nhan = 'Chép' }) {
       onClick={bam}
       title={daChep ? 'Đã chép' : nhan}
       aria-label={daChep ? 'Đã chép' : nhan}
-      className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-ocb-green focus:outline-none focus-visible:ring-2 focus-visible:ring-ocb-green/40"
+      className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-vtb-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-vtb-blue/40"
     >
       {daChep ? (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">

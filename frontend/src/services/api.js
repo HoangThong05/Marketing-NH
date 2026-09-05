@@ -1,10 +1,10 @@
 // Cấu hình axios dùng chung cho toàn bộ ứng dụng.
 import axios from 'axios';
 
-const TOKEN_KEY = 'ocb_token';
-const USER_KEY = 'ocb_user';
+const TOKEN_KEY = 'vtb_token';
+const USER_KEY = 'vtb_user';
 // Lý do bị đăng xuất, để trang login còn hiện thông báo cho người dùng biết
-const LOGOUT_REASON_KEY = 'ocb_logout_reason';
+const LOGOUT_REASON_KEY = 'vtb_logout_reason';
 
 /* ------------------------------------------------------------------ */
 /* Tiện ích thao tác với localStorage                                   */

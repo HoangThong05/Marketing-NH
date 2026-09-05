@@ -188,7 +188,7 @@ function NhomViec({
 
       {loading ? (
         <div className="flex items-center gap-2 px-5 py-8 text-sm text-slate-500">
-          <Spinner size="sm" className="text-ocb-green" />
+          <Spinner size="sm" className="text-vtb-blue" />
           Đang tải...
         </div>
       ) : danhSach.length === 0 ? (
@@ -277,7 +277,7 @@ function NhomViec({
                       type="button"
                       onClick={() => onNhan(c)}
                       disabled={dangNhanId === c.id}
-                      className="whitespace-nowrap rounded-lg bg-ocb-orange-light px-3 py-1.5 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange hover:text-white disabled:opacity-50"
+                      className="whitespace-nowrap rounded-lg bg-vtb-blue-light px-3 py-1.5 text-xs font-semibold text-vtb-blue-dark transition hover:bg-vtb-blue hover:text-white disabled:opacity-50"
                     >
                       {dangNhanId === c.id ? 'Đang nhận...' : 'Nhận khách'}
                     </button>
@@ -285,7 +285,7 @@ function NhomViec({
                   <button
                     type="button"
                     onClick={() => onChamSoc(c)}
-                    className="whitespace-nowrap rounded-lg bg-ocb-green px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-ocb-green-dark"
+                    className="whitespace-nowrap rounded-lg bg-vtb-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-vtb-blue-dark"
                   >
                     Chăm sóc
                   </button>
@@ -509,7 +509,7 @@ export default function ViecHomNay() {
           className="btn-ghost !py-2"
         >
           {dangTai ? (
-            <Spinner size="sm" className="text-ocb-green" />
+            <Spinner size="sm" className="text-vtb-blue" />
           ) : (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path

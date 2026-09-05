@@ -30,7 +30,7 @@ import ViecHomNay from './ViecHomNay';
 import SoDienThoai from '../components/SoDienThoai';
 import BaoCaoNhanVien from './BaoCaoNhanVien';
 import PhanTrang from '../components/PhanTrang';
-import OcbLogo from '../components/OcbLogo';
+import VietinBankLogo from '../components/VietinBankLogo';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import EditCustomerModal from '../components/EditCustomerModal';
 import ProfileModal from '../components/ProfileModal';
@@ -50,7 +50,7 @@ import {
 
 // Tiêu đề tab lúc không có việc gì quá hạn. Giữ khớp với thẻ <title>
 // trong frontend/index.html.
-const TIEU_DE_GOC = 'OCB - Quản lý khách hàng';
+const TIEU_DE_GOC = 'VietinBank - Quản lý khách hàng';
 
 // Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
 const MUC_MENU = [
@@ -457,7 +457,7 @@ export default function Admin() {
   /* --- Thống kê lấy từ server, tính trên toàn bộ hệ thống --- */
   const soDenHan = stats?.den_han ?? 0;
 
-  // Số việc quá hạn hiện ngay trên tiêu đề tab: "(2) OCB - Quản lý khách hàng".
+  // Số việc quá hạn hiện ngay trên tiêu đề tab: "(2) VietinBank - Quản lý khách hàng".
   //
   // Cố ý KHÔNG dùng Notification API của trình duyệt. Nó phải xin quyền, mà
   // người dùng lỡ bấm "Chặn" một lần là mất hẳn, không có cách nào xin lại
@@ -734,7 +734,7 @@ export default function Admin() {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Khách hàng');
 
       const ngay = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(workbook, `Danh-sach-khach-hang-OCB-${ngay}.xlsx`);
+      XLSX.writeFile(workbook, `Danh-sach-khach-hang-VietinBank-${ngay}.xlsx`);
 
       toast.success(`Đã xuất ${rows.length} khách hàng ra Excel.`);
     } catch (error) {
@@ -764,12 +764,12 @@ export default function Admin() {
 
       {/* ============ Sidebar ============ */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-ocb-green transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-vtb-blue transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/15 px-5 py-5">
-          <OcbLogo size="md" />
+          <VietinBankLogo size="md" />
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
@@ -885,7 +885,7 @@ export default function Admin() {
             title="Tải lại dữ liệu"
           >
             {loading ? (
-              <Spinner size="sm" className="text-ocb-green" />
+              <Spinner size="sm" className="text-vtb-blue" />
             ) : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -925,7 +925,7 @@ export default function Admin() {
             type="button"
             onClick={handleExportExcel}
             disabled={dangXuat}
-            className="btn-orange !px-3 !py-2"
+            className="btn-primary !px-3 !py-2"
           >
             {dangXuat ? (
               <Spinner size="sm" className="text-white" />
@@ -1255,7 +1255,7 @@ export default function Admin() {
                 }
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   filterPhuTrach === 'me'
-                    ? 'bg-ocb-green text-white'
+                    ? 'bg-vtb-blue text-white'
                     : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
                 }`}
               >
@@ -1270,7 +1270,7 @@ export default function Admin() {
                 }
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   filterPhuTrach === 'none'
-                    ? 'bg-ocb-orange text-white'
+                    ? 'bg-vtb-blue text-white'
                     : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
                 }`}
                 title="Khách chưa ai nhận phụ trách"
@@ -1302,7 +1302,7 @@ export default function Admin() {
                 onClick={() => setChiHienGoiY((v) => !v)}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
                   chiHienGoiY
-                    ? 'bg-ocb-green text-white'
+                    ? 'bg-vtb-blue text-white'
                     : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
                 }`}
                 title="Khách đang xếp Thường nhưng thu nhập đủ để cân nhắc nâng hạng"
@@ -1341,7 +1341,7 @@ export default function Admin() {
                   <button
                     type="button"
                     onClick={xoaBoLoc}
-                    className="mt-3 text-sm font-medium text-ocb-green hover:underline"
+                    className="mt-3 text-sm font-medium text-vtb-blue hover:underline"
                   >
                     Xoá bộ lọc
                   </button>
@@ -1393,7 +1393,7 @@ export default function Admin() {
                         <td className="px-4 py-3 text-slate-800">{c.ten_khach_hang}</td>
                         <td className="whitespace-nowrap px-4 py-3">
                           {dangGanId === c.id ? (
-                            <Spinner size="sm" className="text-ocb-green" />
+                            <Spinner size="sm" className="text-vtb-blue" />
                           ) : quanTri ? (
                             /* Admin đổi được người phụ trách bất kỳ lúc nào */
                             <select
@@ -1402,7 +1402,7 @@ export default function Admin() {
                                 doiPhuTrach(c, e.target.value || null)
                               }
                               aria-label="Người phụ trách"
-                              className="max-w-[150px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs outline-none focus:border-ocb-green"
+                              className="max-w-[150px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs outline-none focus:border-vtb-blue"
                             >
                               <option value="">— Chưa giao —</option>
                               {danhBa.map((u) => (
@@ -1418,7 +1418,7 @@ export default function Admin() {
                               <button
                                 type="button"
                                 onClick={() => doiPhuTrach(c, null)}
-                                className="ml-2 text-xs font-medium text-slate-500 underline decoration-dotted underline-offset-2 hover:text-ocb-orange-dark"
+                                className="ml-2 text-xs font-medium text-slate-500 underline decoration-dotted underline-offset-2 hover:text-vtb-red-dark"
                                 title="Trả khách về nhóm chưa giao, không xoá dữ liệu"
                               >
                                 Trả lại
@@ -1433,7 +1433,7 @@ export default function Admin() {
                             <button
                               type="button"
                               onClick={() => doiPhuTrach(c, user?.id)}
-                              className="whitespace-nowrap rounded-lg bg-ocb-orange-light px-2.5 py-1 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange hover:text-white"
+                              className="whitespace-nowrap rounded-lg bg-vtb-blue-light px-2.5 py-1 text-xs font-semibold text-vtb-blue-dark transition hover:bg-vtb-blue hover:text-white"
                               title="Nhận phụ trách khách hàng này"
                             >
                               Nhận khách
@@ -1476,7 +1476,7 @@ export default function Admin() {
                               onClick={() => nangLenTiemNang(c)}
                               disabled={nangHangId === c.id}
                               title={`Thu nhập ${c.muc_luong} — bấm để nâng lên Tiềm năng`}
-                              className="mt-1 block text-xs font-medium text-ocb-orange-dark underline decoration-dotted underline-offset-2 transition hover:text-ocb-orange disabled:opacity-50"
+                              className="mt-1 block text-xs font-medium text-vtb-red-dark underline decoration-dotted underline-offset-2 transition hover:text-vtb-red disabled:opacity-50"
                             >
                               {nangHangId === c.id
                                 ? 'Đang nâng...'
@@ -1514,13 +1514,13 @@ export default function Admin() {
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           {xemThungRac ? (
                             dangKhoiPhucId === c.id ? (
-                              <Spinner size="sm" className="ml-auto text-ocb-green" />
+                              <Spinner size="sm" className="ml-auto text-vtb-blue" />
                             ) : (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => khoiPhuc(c)}
-                                  className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
+                                  className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-vtb-blue transition hover:bg-vtb-blue-light"
                                 >
                                   Khôi phục
                                 </button>
@@ -1538,14 +1538,14 @@ export default function Admin() {
                           <button
                             type="button"
                             onClick={() => setContacting(c)}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-orange-dark transition hover:bg-ocb-orange-light"
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-vtb-blue-dark transition hover:bg-vtb-blue-light"
                           >
                             Chăm sóc
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditing(c)}
-                            className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
+                            className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-vtb-blue transition hover:bg-vtb-blue-light"
                           >
                             Sửa
                           </button>

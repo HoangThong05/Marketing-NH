@@ -26,7 +26,7 @@ const PasswordInput = forwardRef(function PasswordInput(
         aria-label={hien ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
         aria-pressed={hien}
         title={hien ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-ocb-green/30"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-vtb-blue/30"
       >
         {hien ? (
           // Con mắt bị gạch chéo: đang hiện, bấm để ẩn

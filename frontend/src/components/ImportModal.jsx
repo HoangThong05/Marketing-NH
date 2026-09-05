@@ -120,7 +120,7 @@ export default function ImportModal({ open, onClose, onDone }) {
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Khách hàng');
-    XLSX.writeFile(wb, 'Mau-nhap-khach-hang-OCB.xlsx');
+    XLSX.writeFile(wb, 'Mau-nhap-khach-hang-VietinBank.xlsx');
   };
 
   /** Đọc file và kiểm tra từng dòng ngay trên trình duyệt */
@@ -285,8 +285,8 @@ export default function ImportModal({ open, onClose, onDone }) {
           {/* ---------- Kết quả sau khi nhập ---------- */}
           {ketQua ? (
             <div className="space-y-4">
-              <div className="rounded-xl bg-ocb-green-light p-4 ring-1 ring-ocb-green/20">
-                <p className="text-sm font-semibold text-ocb-green-dark">
+              <div className="rounded-xl bg-vtb-blue-light p-4 ring-1 ring-vtb-blue/20">
+                <p className="text-sm font-semibold text-vtb-blue-dark">
                   Nhập xong
                 </p>
                 <ul className="mt-2 space-y-1 text-sm text-slate-700">
@@ -374,9 +374,9 @@ export default function ImportModal({ open, onClose, onDone }) {
                         {rows.length}
                       </p>
                     </div>
-                    <div className="rounded-lg bg-ocb-green-light p-3 ring-1 ring-ocb-green/20">
-                      <p className="text-xs text-ocb-green-dark">Hợp lệ</p>
-                      <p className="text-xl font-bold tabular-nums text-ocb-green-dark">
+                    <div className="rounded-lg bg-vtb-blue-light p-3 ring-1 ring-vtb-blue/20">
+                      <p className="text-xs text-vtb-blue-dark">Hợp lệ</p>
+                      <p className="text-xl font-bold tabular-nums text-vtb-blue-dark">
                         {hopLe.length}
                       </p>
                     </div>
@@ -427,7 +427,7 @@ export default function ImportModal({ open, onClose, onDone }) {
                           value="bo_qua"
                           checked={cheDo === 'bo_qua'}
                           onChange={() => setCheDo('bo_qua')}
-                          className="mt-0.5 accent-ocb-green"
+                          className="mt-0.5 accent-vtb-blue"
                         />
                         <span className="text-sm">
                           <span className="font-medium text-slate-800">Bỏ qua</span>
@@ -444,7 +444,7 @@ export default function ImportModal({ open, onClose, onDone }) {
                           value="cap_nhat"
                           checked={cheDo === 'cap_nhat'}
                           onChange={() => setCheDo('cap_nhat')}
-                          className="mt-0.5 accent-ocb-green"
+                          className="mt-0.5 accent-vtb-blue"
                         />
                         <span className="text-sm">
                           <span className="font-medium text-slate-800">

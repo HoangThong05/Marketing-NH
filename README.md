@@ -1,6 +1,6 @@
-# Marketing NH — Quản lý khách hàng OCB
+# Marketing NH — Quản lý khách hàng VietinBank
 
-Web app quản lý khách hàng tiềm năng cho phòng marketing ngân hàng OCB: khách tự
+Web app quản lý khách hàng tiềm năng cho phòng marketing ngân hàng VietinBank: khách tự
 điền thông tin qua form công khai, nhân viên nhận và chăm sóc, quản lý theo dõi
 tiến độ cả nhóm.
 
@@ -114,7 +114,7 @@ MarketingNH/
         │   ├── ImportModal.jsx        # Nhập Excel
         │   ├── ProfileModal.jsx       # Hồ sơ + đổi mật khẩu
         │   ├── SoDienThoai.jsx        # Số điện thoại bấm là chép
-        │   └── ...                    # OcbLogo, Spinner, PhanTrang, PasswordInput
+        │   └── ...                    # VietinBankLogo, Spinner, PhanTrang, PasswordInput
         └── pages/
             ├── CustomerForm.jsx       # Form công khai
             ├── Login.jsx

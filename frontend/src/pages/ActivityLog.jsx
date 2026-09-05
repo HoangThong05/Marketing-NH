@@ -187,7 +187,7 @@ export default function ActivityLog() {
             className="btn-ghost !px-3 !py-2"
           >
             {loading ? (
-              <Spinner size="sm" className="text-ocb-green" />
+              <Spinner size="sm" className="text-vtb-blue" />
             ) : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -216,7 +216,7 @@ export default function ActivityLog() {
               <button
                 type="button"
                 onClick={xoaBoLoc}
-                className="mt-3 text-sm font-medium text-ocb-green hover:underline"
+                className="mt-3 text-sm font-medium text-vtb-blue hover:underline"
               >
                 Xoá bộ lọc
               </button>

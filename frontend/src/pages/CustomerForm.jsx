@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import { customerAPI, getErrorMessage } from '../services/api';
-import OcbLogo from '../components/OcbLogo';
+import VietinBankLogo from '../components/VietinBankLogo';
 import Spinner from '../components/Spinner';
 import { chuanHoaSoDienThoai } from '../utils/dienThoai';
 import {
@@ -65,16 +65,16 @@ export default function CustomerForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ocb-green-light via-slate-50 to-ocb-orange-light px-4 py-8 sm:py-12">
+    <div className="min-h-screen bg-gradient-to-br from-vtb-blue-light via-slate-50 to-vtb-red-light px-4 py-8 sm:py-12">
       <div className="mx-auto w-full max-w-xl">
         {/* Tiêu đề trang */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <OcbLogo size="xl" />
+          <VietinBankLogo size="xl" />
           <h1 className="mt-4 text-2xl font-bold text-slate-800 sm:text-3xl">
             Đăng ký thông tin khách hàng
           </h1>
           <p className="mt-2 max-w-md text-sm text-slate-600">
-            Quý khách vui lòng điền thông tin bên dưới. Nhân viên OCB sẽ liên hệ
+            Quý khách vui lòng điền thông tin bên dưới. Nhân viên VietinBank sẽ liên hệ
             trong thời gian sớm nhất.
           </p>
         </div>
@@ -82,7 +82,7 @@ export default function CustomerForm() {
         {/* Thẻ chứa form */}
         <div className="animate-fade-in-up overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-200">
           {/* Dải màu thương hiệu ở đầu thẻ */}
-          <div className="h-1.5 bg-gradient-to-r from-ocb-green to-ocb-orange" />
+          <div className="h-1.5 bg-gradient-to-r from-vtb-blue to-vtb-red" />
 
           <form
             onSubmit={handleSubmit(onSubmit)}
@@ -265,7 +265,7 @@ export default function CustomerForm() {
             </button>
 
             <p className="text-center text-xs text-slate-400">
-              Thông tin của quý khách được bảo mật theo quy định của OCB.
+              Thông tin của quý khách được bảo mật theo quy định của VietinBank.
             </p>
           </form>
         </div>
@@ -274,7 +274,7 @@ export default function CustomerForm() {
         <div className="mt-6 text-center">
           <Link
             to="/login"
-            className="text-sm font-medium text-slate-500 transition hover:text-ocb-green"
+            className="text-sm font-medium text-slate-500 transition hover:text-vtb-blue"
           >
             Đăng nhập quản trị
           </Link>

@@ -21,7 +21,7 @@ export default function PhanTrang({ page, totalPages, total, limit, onPage, onLi
           value={limit}
           onChange={(e) => onLimit(Number(e.target.value))}
           aria-label="Số dòng mỗi trang"
-          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm outline-none focus:border-ocb-green"
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm outline-none focus:border-vtb-blue"
         >
           {[10, 25, 50, 100].map((n) => (
             <option key={n} value={n}>

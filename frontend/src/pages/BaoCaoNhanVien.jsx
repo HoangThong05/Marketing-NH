@@ -39,7 +39,7 @@ function tenHienThi(u) {
 /**
  * Tỉ lệ khách đã liên hệ ít nhất một lần.
  *
- * Nền dùng sắc độ nhạt của chính màu xanh OCB chứ không phải xám: cùng một
+ * Nền dùng sắc độ nhạt của chính màu xanh VietinBank chứ không phải xám: cùng một
  * dải màu thì mắt đọc được phần đã đi so với phần còn lại, thay vì thấy hai
  * vật thể khác nhau đặt cạnh nhau.
  */
@@ -49,12 +49,12 @@ function ThanhTienDo({ xong, tong }) {
   return (
     <div className="flex items-center gap-2">
       <div
-        className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-ocb-green-light"
+        className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-vtb-blue-light"
         role="img"
         aria-label={`Đã liên hệ ${xong} trên ${tong} khách, đạt ${phanTram} phần trăm`}
       >
         <div
-          className="h-full rounded-full bg-ocb-green transition-all"
+          className="h-full rounded-full bg-vtb-blue transition-all"
           style={{ width: `${phanTram}%` }}
         />
       </div>
@@ -125,7 +125,7 @@ export default function BaoCaoNhanVien() {
   if (loading) {
     return (
       <main className="flex items-center gap-2 p-6 text-sm text-slate-500">
-        <Spinner size="sm" className="text-ocb-green" />
+        <Spinner size="sm" className="text-vtb-blue" />
         Đang tính số liệu...
       </main>
     );
@@ -213,7 +213,7 @@ export default function BaoCaoNhanVien() {
       XLSX.utils.book_append_sheet(wb, sheet, 'Bao cao nhan vien');
 
       const ngay = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `Bao-cao-nhan-vien-OCB-${ngay}.xlsx`);
+      XLSX.writeFile(wb, `Bao-cao-nhan-vien-VietinBank-${ngay}.xlsx`);
       toast.success('Đã xuất báo cáo ra Excel.');
     } catch {
       toast.error('Không xuất được báo cáo.');
@@ -250,7 +250,7 @@ export default function BaoCaoNhanVien() {
             type="button"
             onClick={xuatExcel}
             disabled={dangXuat}
-            className="btn-orange !py-2"
+            className="btn-primary !py-2"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path

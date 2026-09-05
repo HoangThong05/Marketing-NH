@@ -384,7 +384,7 @@ export default function UserManagement() {
                         <span
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${
                             u.active
-                              ? 'bg-ocb-green-light text-ocb-green-dark ring-ocb-green/30'
+                              ? 'bg-vtb-blue-light text-vtb-blue-dark ring-vtb-blue/30'
                               : 'bg-slate-100 text-slate-500 ring-slate-300'
                           }`}
                         >
@@ -396,7 +396,7 @@ export default function UserManagement() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
                         {dangLuu ? (
-                          <Spinner size="sm" className="ml-auto text-ocb-green" />
+                          <Spinner size="sm" className="ml-auto text-vtb-blue" />
                         ) : (
                           <>
                             {/* Không hiện trên dòng của chính mình: đổi mật khẩu
@@ -406,7 +406,7 @@ export default function UserManagement() {
                               <button
                                 type="button"
                                 onClick={() => setResetting(u)}
-                                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ocb-green transition hover:bg-ocb-green-light"
+                                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-vtb-blue transition hover:bg-vtb-blue-light"
                               >
                                 Đặt lại MK
                               </button>
@@ -425,7 +425,7 @@ export default function UserManagement() {
                               className={`ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                                 u.active
                                   ? 'text-red-600 hover:bg-red-50'
-                                  : 'text-ocb-green hover:bg-ocb-green-light'
+                                  : 'text-vtb-blue hover:bg-vtb-blue-light'
                               }`}
                               title={
                                 laAdmin
