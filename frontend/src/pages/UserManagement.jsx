@@ -360,6 +360,12 @@ export default function UserManagement() {
                   const laAdmin = u.role === 'admin';
                   const dangLuu = savingId === u.id;
 
+                  // Việc gì không làm được thì ẩn hẳn, không hiện nút mờ.
+                  // Nút mờ chỉ tổ mời người ta bấm thử rồi không hiểu vì sao
+                  // không ăn — lý do đã ghi sẵn ở đoạn giải thích cuối trang.
+                  const choDatLaiMK = !laToi;
+                  const choKhoa = !laToi && !laAdmin;
+
                   return (
                     <tr key={u.id} className="transition hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-800">
@@ -400,9 +406,9 @@ export default function UserManagement() {
                         ) : (
                           <>
                             {/* Không hiện trên dòng của chính mình: đổi mật khẩu
-                                bản thân phải qua "Đổi mật khẩu" ở sidebar,
+                                bản thân phải qua "Hồ sơ của tôi" ở sidebar,
                                 vì chỗ đó bắt nhập mật khẩu hiện tại */}
-                            {!laToi && (
+                            {choDatLaiMK && (
                               <button
                                 type="button"
                                 onClick={() => setResetting(u)}
@@ -412,31 +418,31 @@ export default function UserManagement() {
                               </button>
                             )}
 
-                            <button
-                              type="button"
-                              disabled={laToi || laAdmin}
-                              onClick={() =>
-                                capNhat(
-                                  u,
-                                  { active: !u.active },
-                                  u.active ? 'Đã khoá tài khoản.' : 'Đã mở khoá tài khoản.'
-                                )
-                              }
-                              className={`ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                                u.active
-                                  ? 'text-red-600 hover:bg-red-50'
-                                  : 'text-vtb-blue hover:bg-vtb-blue-light'
-                              }`}
-                              title={
-                                laAdmin
-                                  ? 'Không thể khoá tài khoản quản trị'
-                                  : laToi
-                                    ? 'Không thể tự khoá tài khoản của mình'
-                                    : ''
-                              }
-                            >
-                              {u.active ? 'Khoá' : 'Mở khoá'}
-                            </button>
+                            {choKhoa && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  capNhat(
+                                    u,
+                                    { active: !u.active },
+                                    u.active ? 'Đã khoá tài khoản.' : 'Đã mở khoá tài khoản.'
+                                  )
+                                }
+                                className={`ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                                  u.active
+                                    ? 'text-red-600 hover:bg-red-50'
+                                    : 'text-vtb-blue hover:bg-vtb-blue-light'
+                                }`}
+                              >
+                                {u.active ? 'Khoá' : 'Mở khoá'}
+                              </button>
+                            )}
+
+                            {/* Ô trống trơn dễ bị hiểu là giao diện lỗi, nên
+                                vẫn để một gạch ngang như các ô rỗng khác */}
+                            {!choDatLaiMK && !choKhoa && (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </>
                         )}
                       </td>
