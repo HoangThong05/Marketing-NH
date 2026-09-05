@@ -7,11 +7,26 @@ import CustomerForm from './pages/CustomerForm';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { LoadingBlock } from './components/Spinner';
+import { isTokenValid } from './services/api';
 
 // Trang Admin kéo theo recharts và xlsx, cộng lại gần 800 KB.
 // Tách ra thành gói riêng để khách vào trang đăng ký (trang công khai,
 // lượt truy cập nhiều nhất) không phải tải phần mã họ không bao giờ dùng.
 const Admin = lazy(() => import('./pages/Admin'));
+
+/**
+ * Địa chỉ không khớp route nào.
+ *
+ * Người đang đăng nhập thì đưa về khu làm việc, không phải trang chủ: trang
+ * chủ là form đăng ký dành cho khách, nhân viên gõ sai địa chỉ mà rơi vào đó
+ * sẽ tưởng mình vừa bị đăng xuất.
+ *
+ * Tách thành component riêng để chỉ kiểm tra token khi thật sự khớp vào đây,
+ * chứ không chạy lại sau mỗi lần vẽ toàn bộ ứng dụng.
+ */
+function DuongDanLa() {
+  return <Navigate to={isTokenValid() ? '/lam-viec' : '/'} replace />;
+}
 
 export default function App() {
   return (
@@ -68,8 +83,8 @@ export default function App() {
         <Route path="/admin" element={<Navigate to="/lam-viec" replace />} />
         <Route path="/admin/*" element={<Navigate to="/lam-viec" replace />} />
 
-        {/* Đường dẫn lạ thì đưa về trang chủ */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Đường dẫn lạ: tuỳ đang đăng nhập hay không mà đưa về đúng chỗ */}
+        <Route path="*" element={<DuongDanLa />} />
       </Routes>
     </BrowserRouter>
   );
