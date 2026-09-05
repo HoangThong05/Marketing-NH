@@ -28,6 +28,7 @@ import UserManagement from './UserManagement';
 import ActivityLog from './ActivityLog';
 import ViecHomNay from './ViecHomNay';
 import SoDienThoai from '../components/SoDienThoai';
+import XacNhanModal from '../components/XacNhanModal';
 import BaoCaoNhanVien from './BaoCaoNhanVien';
 import PhanTrang from '../components/PhanTrang';
 import VietinBankLogo from '../components/VietinBankLogo';
@@ -574,13 +575,6 @@ export default function Admin() {
 
   /** Xoá hẳn khỏi database, mất luôn lịch sử liên hệ */
   const xoaVinhVien = async (customer) => {
-    const xacNhan = window.confirm(
-      `XOÁ VĨNH VIỄN "${customer.ten_khach_hang}" (${customer.so_dien_thoai})?\n\n` +
-        'Toàn bộ lịch sử liên hệ của khách này sẽ mất hẳn.\n' +
-        'KHÔNG khôi phục lại được.'
-    );
-    if (!xacNhan) return;
-
     setDangKhoiPhucId(customer.id);
     try {
       await customerAPI.xoaVinhVien(customer.id);
@@ -591,6 +585,7 @@ export default function Admin() {
       toast.error(getErrorMessage(error, 'Không xoá được.'));
     } finally {
       setDangKhoiPhucId(null);
+      setDangHoiXoa(null);
     }
   };
 
@@ -615,13 +610,13 @@ export default function Admin() {
   };
 
   /* --- Xoá khách hàng --- */
-  const handleDelete = async (customer) => {
-    const xacNhan = window.confirm(
-      `Chuyển khách "${customer.ten_khach_hang}" (${customer.so_dien_thoai}) vào thùng rác?\n\n` +
-        'Toàn bộ lịch sử liên hệ vẫn được giữ. Bạn khôi phục lại được bất cứ lúc nào.'
-    );
-    if (!xacNhan) return;
 
+  // Khách đang chờ xác nhận xoá. { customer, vinhVien }
+  // Tách state riêng thay vì hỏi bằng window.confirm: xem giải thích đầy đủ
+  // ở đầu components/XacNhanModal.jsx.
+  const [dangHoiXoa, setDangHoiXoa] = useState(null);
+
+  const handleDelete = async (customer) => {
     setDeletingId(customer.id);
     try {
       await customerAPI.remove(customer.id);
@@ -643,6 +638,7 @@ export default function Admin() {
       toast.error(getErrorMessage(error, 'Không thể xoá khách hàng.'));
     } finally {
       setDeletingId(null);
+      setDangHoiXoa(null);
     }
   };
 
@@ -1526,7 +1522,7 @@ export default function Admin() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => xoaVinhVien(c)}
+                                  onClick={() => setDangHoiXoa({ customer: c, vinhVien: true })}
                                   className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
                                 >
                                   Xoá vĩnh viễn
@@ -1553,7 +1549,7 @@ export default function Admin() {
                           {quanTri && (
                             <button
                               type="button"
-                              onClick={() => handleDelete(c)}
+                              onClick={() => setDangHoiXoa({ customer: c, vinhVien: false })}
                               disabled={deletingId === c.id}
                               className="ml-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                             >
@@ -1582,6 +1578,49 @@ export default function Admin() {
         </main>
         )}
       </div>
+
+      {/* ============ Hộp xác nhận xoá ============ */}
+      <XacNhanModal
+        open={!!dangHoiXoa}
+        tieuDe={dangHoiXoa?.vinhVien ? 'Xoá vĩnh viễn khách hàng?' : 'Chuyển vào thùng rác?'}
+        nguyHiem={!!dangHoiXoa?.vinhVien}
+        nhanXacNhan={dangHoiXoa?.vinhVien ? 'Xoá vĩnh viễn' : 'Chuyển vào thùng rác'}
+        dangChay={
+          dangHoiXoa
+            ? deletingId === dangHoiXoa.customer.id ||
+              dangKhoiPhucId === dangHoiXoa.customer.id
+            : false
+        }
+        onHuy={() => setDangHoiXoa(null)}
+        onXacNhan={() =>
+          dangHoiXoa.vinhVien
+            ? xoaVinhVien(dangHoiXoa.customer)
+            : handleDelete(dangHoiXoa.customer)
+        }
+        noiDung={
+          dangHoiXoa && (
+            <>
+              <p>
+                <span className="font-semibold text-slate-800">
+                  {dangHoiXoa.customer.ten_khach_hang}
+                </span>{' '}
+                <span className="tabular-nums">{dangHoiXoa.customer.so_dien_thoai}</span>
+              </p>
+              {dangHoiXoa.vinhVien ? (
+                <p className="font-medium text-red-700">
+                  Toàn bộ lịch sử liên hệ của khách này sẽ mất hẳn, không khôi phục
+                  lại được.
+                </p>
+              ) : (
+                <p>
+                  Lịch sử liên hệ vẫn được giữ nguyên. Bạn lấy lại được bất cứ lúc
+                  nào trong Thùng rác.
+                </p>
+              )}
+            </>
+          )
+        }
+      />
 
       {/* ============ Modal chỉnh sửa ============ */}
       <EditCustomerModal
