@@ -84,7 +84,7 @@ api.interceptors.response.use(
       clearAuth();
       // Chỉ chuyển hướng khi đang ở trang cần đăng nhập,
       // tránh làm gián đoạn form công khai ở trang chủ.
-      if (window.location.pathname.startsWith('/admin')) {
+      if (window.location.pathname.startsWith('/lam-viec')) {
         // Chuyển trang bằng window.location sẽ xoá sạch toast đang hiện,
         // nên gửi lý do sang trang login qua sessionStorage để hiện lại ở đó.
         const message = error.response?.data?.message;

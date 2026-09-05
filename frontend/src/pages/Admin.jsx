@@ -1,7 +1,7 @@
 // Trang quản trị: thống kê, tìm kiếm, lọc và quản lý danh sách khách hàng.
 // Chỉ truy cập được sau khi đăng nhập (xem components/ProtectedRoute.jsx).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import {
@@ -53,32 +53,40 @@ import {
 // trong frontend/index.html.
 const TIEU_DE_GOC = 'VietinBank - Quản lý khách hàng';
 
-// Các mục trong sidebar. chiAdmin = chỉ quản trị viên mới thấy.
+// Các mục trong sidebar.
+//   key      - dùng trong code để biết đang mở màn nào
+//   duongDan - đoạn địa chỉ tương ứng, /lam-viec/<duongDan>
+//   chiAdmin - chỉ quản trị viên mới thấy
 const MUC_MENU = [
   {
     key: 'viec',
+    duongDan: 'viec-hom-nay',
     nhan: 'Việc hôm nay',
     icon: 'M9 2h6v2h4v18H5V4h4V2Zm0 4H7v14h10V6h-2v2H9V6Zm-.5 6.5 1.4-1.4 1.6 1.6 3.6-3.6 1.4 1.4-5 5-3-3Z',
   },
   {
     key: 'khach',
+    duongDan: 'khach-hang',
     nhan: 'Quản lý khách hàng',
     icon: 'M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-12h8V3h-8v6Z',
   },
   {
     key: 'baocao',
+    duongDan: 'bao-cao',
     nhan: 'Báo cáo nhân viên',
     chiAdmin: true,
     icon: 'M4 20h16v2H4v-2Zm2-2V9h3v9H6Zm5 0V4h3v14h-3Zm5 0v-6h3v6h-3Z',
   },
   {
     key: 'taikhoan',
+    duongDan: 'tai-khoan',
     nhan: 'Tài khoản',
     chiAdmin: true,
     icon: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z',
   },
   {
     key: 'nhatky',
+    duongDan: 'nhat-ky',
     nhan: 'Nhật ký thao tác',
     chiAdmin: true,
     icon: 'M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v1.6H8V12Zm0 3.4h8V17H8v-1.6Z',
@@ -210,6 +218,7 @@ function ChartTooltip({ active, payload, bangMau }) {
 export default function Admin() {
   const navigate = useNavigate();
   const user = getUser();
+  const quanTri = isAdmin(); // tài khoản hiện tại có quyền quản trị không
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -237,7 +246,31 @@ export default function Admin() {
   const bangRef = useRef(null); // để cuộn xuống bảng khi lọc từ banner
   // Mặc định mở vào màn hình việc: đó là nơi bắt đầu ngày làm việc,
   // còn bảng danh sách là nơi tra cứu khi cần.
-  const [view, setView] = useState('viec'); // viec | khach | taikhoan | nhatky
+  // Mục đang mở lấy TỪ ĐỊA CHỈ, không giữ trong useState. Có vậy thì nút
+  // Back của trình duyệt mới quay về đúng mục trước đó, F5 mới ở lại đúng
+  // chỗ, và mới gửi cho người khác được đường dẫn trỏ thẳng vào một màn.
+  const { muc } = useParams();
+  const mucDangMo = MUC_MENU.find((m) => m.duongDan === muc);
+  // Nhân viên gõ thẳng địa chỉ của mục dành riêng cho admin thì coi như
+  // không hợp lệ. Chỉ là chuyện giao diện — backend vẫn chặn độc lập.
+  const hopLe = mucDangMo && (!mucDangMo.chiAdmin || quanTri);
+  const view = hopLe ? mucDangMo.key : MUC_MENU[0].key;
+
+  const moMuc = useCallback(
+    (key) => {
+      const m = MUC_MENU.find((x) => x.key === key);
+      if (m) navigate('/lam-viec/' + m.duongDan);
+    },
+    [navigate]
+  );
+
+  // Địa chỉ trống (/lam-viec), gõ sai, hoặc mục không đủ quyền thì viết lại
+  // thành địa chỉ của mục đang thực sự hiển thị. Thanh địa chỉ phải luôn nói
+  // đúng màn hình đang mở, nếu không thì dấu trang và nút Back lại sai tiếp.
+  // Dùng replace để không nhét một bước rác vào lịch sử trình duyệt.
+  useEffect(() => {
+    if (!hopLe) navigate('/lam-viec/' + MUC_MENU[0].duongDan, { replace: true });
+  }, [hopLe, navigate]);
 
   // Phân trang, sắp xếp, lọc theo ngày — tất cả xử lý phía server
   const [page, setPage] = useState(1);
@@ -253,8 +286,6 @@ export default function Admin() {
   // Từ khoá đã trễ nhịp. Gõ tới đâu gọi API tới đó thì mỗi ký tự là một
   // request; đợi 350ms sau khi ngừng gõ vẫn cho cảm giác tức thì.
   const [searchDebounced, setSearchDebounced] = useState('');
-
-  const quanTri = isAdmin(); // tài khoản hiện tại có quyền quản trị không
 
   /**
    * Đồng hồ nhịp 30 giây.
@@ -784,7 +815,7 @@ export default function Admin() {
               key={m.key}
               type="button"
               onClick={() => {
-                setView(m.key);
+                moMuc(m.key);
                 setSidebarOpen(false);
               }}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${

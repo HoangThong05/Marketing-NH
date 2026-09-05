@@ -40,9 +40,12 @@ export default function App() {
         {/* Trang đăng nhập cho nhân viên */}
         <Route path="/login" element={<Login />} />
 
-        {/* Trang quản trị - bắt buộc đăng nhập, tải theo yêu cầu */}
+        {/* Khu làm việc - bắt buộc đăng nhập, tải theo yêu cầu.
+            Mỗi mục trong sidebar là một địa chỉ con, để nút Back của trình
+            duyệt quay đúng về mục trước, F5 ở lại đúng chỗ, và gửi được cho
+            đồng nghiệp đường dẫn trỏ thẳng vào một màn hình cụ thể. */}
         <Route
-          path="/admin"
+          path="/lam-viec/:muc?"
           element={
             <ProtectedRoute>
               <Suspense
@@ -57,6 +60,13 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Địa chỉ cũ: giữ lại để dấu trang và link đã gửi đi không hỏng.
+            Tên "admin" là di sản từ lúc app mới chỉ có bảng điều khiển cho
+            quản trị viên — giờ nhân viên cũng vào đây, gọi là "admin" dễ làm
+            họ tưởng mình đang vào nhầm chỗ hoặc đang có quyền quản trị. */}
+        <Route path="/admin" element={<Navigate to="/lam-viec" replace />} />
+        <Route path="/admin/*" element={<Navigate to="/lam-viec" replace />} />
 
         {/* Đường dẫn lạ thì đưa về trang chủ */}
         <Route path="*" element={<Navigate to="/" replace />} />

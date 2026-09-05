@@ -20,8 +20,8 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Trang người dùng định vào trước khi bị chặn, mặc định là /admin
-  const from = location.state?.from || '/admin';
+  // Trang người dùng định vào trước khi bị chặn, mặc định là khu làm việc
+  const from = location.state?.from || '/lam-viec';
 
   const {
     register,

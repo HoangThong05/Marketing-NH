@@ -230,7 +230,18 @@ trách, admin thấy toàn hệ thống kèm tên người phụ trách trên t�
 |---|---|---|
 | `/` | Công khai | Form khách hàng tự điền |
 | `/login` | Công khai | Đăng nhập nhân viên |
-| `/admin` | Cần đăng nhập | Toàn bộ khu quản trị, chuyển màn bằng sidebar |
+| `/lam-viec/viec-hom-nay` | Cần đăng nhập | Việc hôm nay (màn mặc định) |
+| `/lam-viec/khach-hang` | Cần đăng nhập | Danh sách, lọc, sửa, xuất Excel |
+| `/lam-viec/bao-cao` | **Admin** | Báo cáo theo nhân viên |
+| `/lam-viec/tai-khoan` | **Admin** | Quản lý tài khoản |
+| `/lam-viec/nhat-ky` | **Admin** | Nhật ký thao tác |
+
+Mỗi mục là một địa chỉ riêng nên nút Back của trình duyệt quay đúng về mục
+trước, F5 ở lại đúng chỗ, và gửi được cho đồng nghiệp đường dẫn trỏ thẳng vào
+một màn hình. Nhân viên gõ thẳng địa chỉ của mục dành cho admin thì bị đưa về
+màn mặc định — nhưng đó chỉ là chuyện giao diện, backend chặn độc lập.
+
+Địa chỉ cũ `/admin` vẫn chuyển hướng sang `/lam-viec` để dấu trang không hỏng.
 
 ---
 
@@ -348,7 +359,7 @@ Không cần preview thì bỏ đi cho chặt.
 - [backend/api/index.js](backend/api/index.js) là serverless function, export lại app Express
 - [backend/vercel.json](backend/vercel.json) dồn mọi đường dẫn về function đó để Express tự phân tuyến
 - [backend/index.js](backend/index.js) chỉ gọi `app.listen()` khi **không** có biến `VERCEL`, nên chạy máy vẫn bình thường
-- [frontend/vercel.json](frontend/vercel.json) trả `index.html` cho mọi đường dẫn — thiếu thì F5 ở `/admin` sẽ 404
+- [frontend/vercel.json](frontend/vercel.json) trả `index.html` cho mọi đường dẫn — thiếu thì F5 ở `/lam-viec/bao-cao` sẽ 404
 - Backend đặt `regions: ["bom1"]` (Mumbai) cho gần Supabase `ap-south-1`. Đo thực tế:
   đổi từ `iad1` (Washington) sang `bom1` rút thời gian một vòng gọi database từ
   **170ms xuống 39ms**. Nếu Supabase của bạn ở vùng khác thì sửa lại cho khớp.
