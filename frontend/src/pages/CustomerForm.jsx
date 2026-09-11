@@ -279,6 +279,12 @@ export default function CustomerForm() {
             Đăng nhập quản trị
           </Link>
         </div>
+
+        {/* Nhóm thực hiện. Để ở chân trang, chữ nhỏ và mờ: đủ để người chấm
+            nhận ra, không chen vào phần dành cho khách hàng. */}
+        <p className="mt-8 text-center text-xs leading-relaxed text-slate-400">
+          Thực hiện: Nguyễn Thị Mỹ Ngọc · Nguyễn Thị Hương Ly · Nguyễn Thị Ánh Nhung
+        </p>
       </div>
     </div>
   );
