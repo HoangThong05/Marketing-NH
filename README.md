@@ -178,9 +178,9 @@ Vài điểm dễ vấp:
 - Backend đặt `regions: ["bom1"]` (Mumbai) cho gần Supabase `ap-south-1`. Đo thực
   tế: đổi từ `iad1` sang `bom1` rút một vòng gọi database từ **170 ms xuống 39 ms**.
   Supabase của bạn ở vùng khác thì sửa lại cho khớp.
-- Gói miễn phí của Supabase tạm dừng project sau 7 ngày không có truy vấn.
-  [Lịch chạy hằng ngày](.github/workflows/giu-supabase-song.yml) gọi `/api/health/db`
-  để giữ project sống.
+- Gói miễn phí của Supabase tạm dừng project sau 7 ngày không có truy vấn. Dữ liệu
+  không mất, nhưng phải vào dashboard bấm khôi phục. Muốn chạy liên tục thì đặt một
+  lịch (GitHub Actions, cron-job.org...) gọi `/api/health/db` mỗi ngày một lần.
 
 ---
 
