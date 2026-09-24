@@ -77,12 +77,6 @@ export default function CustomerForm() {
             Quý khách vui lòng điền thông tin bên dưới. Nhân viên VietinBank sẽ liên hệ
             trong thời gian sớm nhất.
           </p>
-
-          {/* Nhóm thực hiện — đặt ngay dưới phần giới thiệu để thấy được mà
-              không cần cuộn. Đậm hơn câu trên một bậc nhưng vẫn nhỏ hơn tiêu đề. */}
-          <p className="mt-4 text-sm font-semibold text-slate-700">
-            Thực hiện: Nguyễn Thị Mỹ Ngọc · Nguyễn Thị Hương Ly · Nguyễn Thị Ánh Nhung
-          </p>
         </div>
 
         {/* Thẻ chứa form */}
